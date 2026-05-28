@@ -34,6 +34,7 @@ const CharacterLibrary = lazy(() => import("@/pages/characters/CharacterLibrary"
 const AdminUsersPage = lazy(() => import("@/pages/AdminUsersPage"));
 const AdminLogsPage = lazy(() => import("@/pages/AdminLogsPage"));
 const AdminModelsPage = lazy(() => import("@/pages/AdminModelsPage"));
+const AdminRechargeCodesPage = lazy(() => import("@/pages/AdminRechargeCodesPage"));
 const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/RegisterPage"));
@@ -80,6 +81,7 @@ const routes: RouteObject[] = [
       { path: "base-characters", element: <CharacterLibrary /> },
       { path: "profile", element: <ProfilePage /> },
       { path: "admin/users", element: <RequireAdmin><AdminUsersPage /></RequireAdmin> },
+      { path: "admin/recharge-codes", element: <RequireAdmin><AdminRechargeCodesPage /></RequireAdmin> },
       { path: "admin/models", element: <RequireAdmin><AdminModelsPage /></RequireAdmin> },
       { path: "admin/logs", element: <RequireAdmin><AdminLogsPage /></RequireAdmin> },
       { path: "*", element: <Navigate to="/" replace /> },

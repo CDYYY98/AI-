@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   SquarePen,
   Tags,
+  Ticket,
   UsersRound,
   WandSparkles,
   Workflow,
@@ -73,6 +74,7 @@ const navGroups: NavGroup[] = [
     title: "系统",
     items: [
       { to: "/prompt-workbench", label: "提示词管理", icon: Braces, adminOnly: true },
+      { to: "/admin/recharge-codes", label: "卡密管理", icon: Ticket, adminOnly: true },
       { to: "/settings/model-routes", label: "模型路由", icon: Route, adminOnly: true },
       { to: "/settings", label: "系统设置", icon: Settings2, adminOnly: true },
     ],

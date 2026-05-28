@@ -1298,8 +1298,52 @@ model User {
   apiQuota     Float    @default(0)
   accountTier  String   @default("trial")
   archivedTasks TaskCenterArchive[]
+  redeemedRechargeCodes RechargeCode[] @relation("RechargeCodeRedeemedBy")
+  createdRechargeCodes  RechargeCode[] @relation("RechargeCodeCreatedBy")
+  creditTransactions    CreditTransaction[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model RechargeCode {
+  id                String   @id @default(cuid())
+  codeHash          String   @unique
+  codePrefix        String
+  codeSuffix        String
+  inspirationAmount Int
+  quotaAmount       Float
+  status            String   @default("unused")
+  batchName         String?
+  note              String?
+  redeemedByUserId  String?
+  redeemedByUser    User?    @relation("RechargeCodeRedeemedBy", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
+  redeemedAt        DateTime?
+  createdByAdminId  String?
+  createdByAdmin    User?    @relation("RechargeCodeCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([batchName])
+  @@index([redeemedByUserId])
+}
+
+model CreditTransaction {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             String
+  inspirationDelta Int
+  quotaDelta       Float
+  beforeQuota      Float
+  afterQuota       Float
+  referenceId      String?
+  note             String?
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type])
+  @@index([referenceId])
 }
 
 model ModelRouteConfig {
