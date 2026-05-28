@@ -34,8 +34,8 @@ if (!isBetaRelease && !hasWindowsSigningMaterial && !allowUnsignedRelease) {
 }
 
 module.exports = {
-  appId: "com.ai-novel.desktop",
-  productName: "AI Novel Writing Assistant v2",
+  appId: "com.turing-novel.desktop",
+  productName: "图灵网文工作台",
   directories: {
     app: "build/app",
     output: "build/dist",

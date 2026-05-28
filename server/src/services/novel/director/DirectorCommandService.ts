@@ -172,6 +172,7 @@ export class DirectorCommandService {
       lane: "auto_director",
       title: input.candidate.workingTitle.trim() || input.title?.trim() || "自动导演开书",
       seedPayload: buildDirectorWorkflowSeedPayload(confirmedInput, null, {
+        createdByUserId: confirmedInput.createdByUserId?.trim() || null,
         directorSession: buildDirectorSessionState({
           runMode,
           phase: "candidate_selection",
@@ -435,6 +436,7 @@ export class DirectorCommandService {
       lane: "auto_director",
       title: input.title?.trim() || "AI 自动导演候选方向",
       seedPayload: {
+        createdByUserId: input.createdByUserId?.trim() || null,
         idea: input.idea,
         provider: input.provider ?? null,
         model: input.model ?? null,

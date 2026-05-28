@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { novelEventBus } from "../../events";
 import { runWithLlmUsageTracking } from "../../llm/usageTracking";
+import { newApiService } from "../auth/NewApiService";
 import { ChapterRuntimeCoordinator } from "./runtime/ChapterRuntimeCoordinator";
 import { isChapterEmptyContentError } from "./runtime/chapterEmptyContentError";
 import {
@@ -579,11 +580,26 @@ export class NovelCorePipelineService {
     const qualityAlertDetails = [...(persistedPayload.qualityAlertDetails ?? [])];
     const replanAlertDetails = [...(persistedPayload.replanAlertDetails ?? [])];
     const recoverableRepairDetails = [...(persistedPayload.recoverableRepairDetails ?? [])];
+    const usageOwner = await prisma.novel.findUnique({
+      where: { id: novelId },
+      select: { ownerUserId: true },
+    }).catch(() => null);
+    const usageUser = usageOwner?.ownerUserId
+      ? await prisma.user.findUnique({
+        where: { id: usageOwner.ownerUserId },
+        select: { id: true, email: true, apiToken: true },
+      }).catch(() => null)
+      : null;
+    const usageUserApiToken = usageUser?.apiToken?.trim()
+      || (usageUser?.email ? (await newApiService.createToken(usageUser.email).catch(() => null))?.key ?? null : null);
 
     try {
       await runWithLlmUsageTracking({
         generationJobId: jobId,
         workflowTaskId: runtimePayload.workflowTaskId,
+        userId: usageUser?.id ?? null,
+        userEmail: usageUser?.email ?? null,
+        userApiToken: usageUserApiToken,
       }, async () => {
         await this.updateJobSafe(jobId, {
           status: "running",

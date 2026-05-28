@@ -25,6 +25,36 @@ router.post(
     try {
       const body = req.body as z.infer<typeof registerSchema>;
       const result = await authService.register(body);
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: "验证码已发送。",
+      } satisfies ApiResponse<typeof result>);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({
+          success: false,
+          error: error.message,
+        } satisfies ApiResponse<null>);
+        return;
+      }
+      next(error);
+    }
+  },
+);
+
+const verifySchema = z.object({
+  email: z.string().trim().email(),
+  code: z.string().trim().length(6),
+});
+
+router.post(
+  "/verify-email",
+  validate({ body: verifySchema }),
+  async (req, res, next) => {
+    try {
+      const { email, code } = req.body as z.infer<typeof verifySchema>;
+      const result = await authService.verifyEmail(email, code);
       res.status(201).json({
         success: true,
         data: result,
@@ -69,7 +99,12 @@ router.post(
 );
 
 router.get("/me", authMiddleware, async (req, res) => {
-  const userId = (req as any).userId as string;
+  res.set("Cache-Control", "no-store");
+  const userId = req.auth?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, error: "请先登录。" });
+    return;
+  }
   const user = await authService.getUserById(userId);
   if (!user) {
     res.status(401).json({
@@ -83,6 +118,26 @@ router.get("/me", authMiddleware, async (req, res) => {
     data: user,
     message: "已获取用户信息。",
   } satisfies ApiResponse<typeof user>);
+});
+
+router.get("/quota", authMiddleware, async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  const userId = req.auth?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, error: "请先登录。" });
+    return;
+  }
+  const user = await authService.getUserById(userId);
+  if (!user) {
+    res.status(401).json({ success: false, error: "用户不存在。" });
+    return;
+  }
+  const info = await authService.getUserQuota(userId);
+  res.status(200).json({
+    success: true,
+    data: info,
+    message: "已获取额度信息。",
+  } satisfies ApiResponse<typeof info>);
 });
 
 export default router;

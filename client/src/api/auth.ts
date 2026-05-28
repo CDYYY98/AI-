@@ -6,6 +6,7 @@ export interface AuthUser {
   username: string;
   email: string;
   role: string;
+  accountTier?: string;
 }
 
 export interface AuthResult {
@@ -13,12 +14,17 @@ export interface AuthResult {
   token: string;
 }
 
+export interface RegisterResult {
+  message: string;
+  debugCode?: string;
+}
+
 export async function register(payload: {
   username: string;
   email: string;
   password: string;
 }) {
-  const { data } = await apiClient.post<ApiResponse<AuthResult>>("/auth/register", payload);
+  const { data } = await apiClient.post<ApiResponse<RegisterResult>>("/auth/register", payload);
   return data;
 }
 
@@ -32,5 +38,19 @@ export async function login(payload: {
 
 export async function getMe() {
   const { data } = await apiClient.get<ApiResponse<AuthUser>>("/auth/me");
+  return data;
+}
+
+export interface QuotaInfo {
+  apiQuota: number;
+  apiToken: string | null;
+  remainQuota: number;
+  usedQuota: number;
+  totalQuota?: number;
+  accountTier?: string;
+}
+
+export async function getQuota() {
+  const { data } = await apiClient.get<ApiResponse<QuotaInfo>>("/auth/quota");
   return data;
 }

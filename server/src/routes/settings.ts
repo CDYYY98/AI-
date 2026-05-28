@@ -438,7 +438,11 @@ router.get(
   },
 );
 
-router.get("/api-keys", requireAdmin, async (_req, res, next) => {
+router.get("/api-keys", async (req, res, next) => {
+  if (req.auth?.role !== "admin") {
+    res.status(200).json({ success: true, data: [], message: "" });
+    return;
+  }
   try {
     const keys = await secretStore.listProviders();
     const keyMap = new Map(keys.map((item) => [item.provider, item]));
@@ -463,7 +467,11 @@ router.get("/api-keys", requireAdmin, async (_req, res, next) => {
   }
 });
 
-router.get("/api-keys/balances", requireAdmin, async (_req, res, next) => {
+router.get("/api-keys/balances", async (req, res, next) => {
+  if (req.auth?.role !== "admin") {
+    res.status(200).json({ success: true, data: [], message: "" });
+    return;
+  }
   try {
     const keys = await secretStore.listProviders({ providers: SUPPORTED_PROVIDERS });
     const keyMap = new Map(

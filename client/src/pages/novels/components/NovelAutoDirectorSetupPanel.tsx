@@ -4,7 +4,6 @@ import type {
   DirectorAutoApprovalPoint,
 } from "@ai-novel/shared/types/autoDirectorApproval";
 import type { StyleIntentSummary } from "@ai-novel/shared/types/styleEngine";
-import LLMSelector from "@/components/common/LLMSelector";
 import AutoDirectorApprovalStrategyPanel from "@/components/autoDirector/AutoDirectorApprovalStrategyPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -268,13 +267,6 @@ export default function NovelAutoDirectorSetupPanel(props: NovelAutoDirectorSetu
         </div>
 
         <div className="min-w-0 space-y-4">
-          <section className="min-w-0 rounded-xl border bg-background/70 p-3 sm:p-4">
-            <div className="text-sm font-medium text-foreground">模型设置</div>
-            <div className="mt-3">
-              <LLMSelector />
-            </div>
-          </section>
-
           <section className="min-w-0 rounded-xl border bg-background/70 p-3 sm:p-4">
             <div className="text-sm font-medium text-foreground">自动导演运行方式</div>
             {hasEditableBasicForm ? (

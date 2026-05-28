@@ -60,11 +60,15 @@ function resolveOperatorId(): string {
   return "anonymous";
 }
 
+function getScopeUserId(req: { auth?: { role: string; userId: string } }): string | undefined {
+  return req.auth?.role !== "admin" ? req.auth?.userId : undefined;
+}
+
 router.use(authMiddleware);
 
-router.get("/overview", async (_req, res, next) => {
+router.get("/overview", async (req, res, next) => {
   try {
-    const data = await followUpService.getOverview();
+    const data = await followUpService.getOverview({ userId: getScopeUserId(req) });
     res.status(200).json({
       success: true,
       data,
@@ -100,7 +104,7 @@ router.post("/batch-actions", validate({ body: batchActionBodySchema }), async (
 router.get("/", validate({ query: listQuerySchema }), async (req, res, next) => {
   try {
     const query = listQuerySchema.parse(req.query);
-    const data = await followUpService.list(query);
+    const data = await followUpService.list({ ...query, userId: getScopeUserId(req) });
     res.status(200).json({
       success: true,
       data,
@@ -114,7 +118,7 @@ router.get("/", validate({ query: listQuerySchema }), async (req, res, next) => 
 router.get("/:taskId", validate({ params: taskParamsSchema }), async (req, res, next) => {
   try {
     const { taskId } = req.params as z.infer<typeof taskParamsSchema>;
-    const data = await followUpService.getDetail(taskId);
+    const data = await followUpService.getDetail(taskId, { userId: getScopeUserId(req) });
     if (!data) {
       res.status(404).json({
         success: false,
@@ -137,6 +141,7 @@ router.get("/:taskId/revalidation", validate({ params: taskParamsSchema }), asyn
     const { taskId } = req.params as z.infer<typeof taskParamsSchema>;
     const data = await followUpService.getDetail(taskId, {
       heal: false,
+      userId: getScopeUserId(req),
     });
     if (!data) {
       res.status(404).json({

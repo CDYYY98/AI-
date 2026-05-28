@@ -12,6 +12,7 @@ import {
   type ImagePromptOutputLanguage,
 } from "@/api/images";
 import { queryKeys } from "@/api/queryKeys";
+import { useAuth } from "@/components/layout/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -39,6 +40,8 @@ export function CharacterImageDialog({
   onOpenChange,
   onTaskCompleted,
 }: CharacterImageDialogProps) {
+  const { user } = useAuth();
+  const canConfigureModel = user?.role === "admin";
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [sourcePrompt, setSourcePrompt] = useState("");
   const [promptMode, setPromptMode] = useState<ImagePromptMode>("character_chain");
@@ -308,6 +311,7 @@ export function CharacterImageDialog({
               onChange={(event) => setImageForm((prev) => ({ ...prev, negativePrompt: event.target.value }))}
             />
 
+            {canConfigureModel ? (
             <label className="space-y-1 text-sm">
               <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">模型厂商</div>
               <select
@@ -324,6 +328,7 @@ export function CharacterImageDialog({
                 <option value="siliconflow">SiliconFlow</option>
               </select>
             </label>
+            ) : null}
 
             <label className="space-y-1 text-sm">
               <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">尺寸</div>

@@ -1,6 +1,7 @@
 import type { BookAnalysis, BookAnalysisStatus } from "@ai-novel/shared/types/bookAnalysis";
 import type { KnowledgeDocumentDetail, KnowledgeDocumentSummary } from "@ai-novel/shared/types/knowledge";
 import LLMSelector from "@/components/common/LLMSelector";
+import { useAuth } from "@/components/layout/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,8 @@ interface BookAnalysisSidebarProps {
 }
 
 export default function BookAnalysisSidebar(props: BookAnalysisSidebarProps) {
+  const { user } = useAuth();
+  const canConfigureModel = user?.role === "admin";
   const {
     selectedDocumentId,
     selectedVersionId,
@@ -95,8 +98,9 @@ export default function BookAnalysisSidebar(props: BookAnalysisSidebarProps) {
             </select>
           </div>
 
-          <div className="space-y-2">
-            <div className="text-sm font-medium">模型</div>
+          {canConfigureModel ? (
+            <div className="space-y-2">
+              <div className="text-sm font-medium">模型</div>
             <LLMSelector
               value={llmConfig}
               onChange={(next) =>
@@ -109,7 +113,8 @@ export default function BookAnalysisSidebar(props: BookAnalysisSidebarProps) {
               }
               showParameters
             />
-          </div>
+            </div>
+          ) : null}
 
           <label className="flex items-center gap-2 rounded-md border p-2 text-sm text-muted-foreground">
             <input

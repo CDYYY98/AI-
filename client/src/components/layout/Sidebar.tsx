@@ -26,6 +26,7 @@ import { listKnowledgeDocuments } from "@/api/knowledge";
 import { queryKeys } from "@/api/queryKeys";
 import { getAutoDirectorFollowUpOverview } from "@/api/autoDirectorFollowUps";
 import { getTaskOverview } from "@/api/tasks";
+import { useAuth } from "@/components/layout/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
+  adminOnly?: boolean;
 }
 
 interface NavGroup {
@@ -70,9 +72,9 @@ const navGroups: NavGroup[] = [
   {
     title: "系统",
     items: [
-      { to: "/prompt-workbench", label: "提示词管理", icon: Braces },
-      { to: "/settings/model-routes", label: "模型路由", icon: Route },
-      { to: "/settings", label: "系统设置", icon: Settings2 },
+      { to: "/prompt-workbench", label: "提示词管理", icon: Braces, adminOnly: true },
+      { to: "/settings/model-routes", label: "模型路由", icon: Route, adminOnly: true },
+      { to: "/settings", label: "系统设置", icon: Settings2, adminOnly: true },
     ],
   },
 ];
@@ -83,6 +85,8 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const taskQuery = useQuery({
     queryKey: queryKeys.tasks.overview,
     queryFn: getTaskOverview,
@@ -194,7 +198,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       <nav className="space-y-4">
-        {navGroups.map((group) => (
+        {navGroups.map((group) => {
+          const visibleItems = group.items.filter((item) => !item.adminOnly || isAdmin);
+          if (visibleItems.length === 0) {
+            return null;
+          }
+          return (
           <div key={group.title} className="space-y-1">
             {!collapsed ? (
               <div className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
@@ -204,7 +213,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <div className="mx-auto h-px w-8 bg-border/70" />
             )}
 
-            {group.items.map((item) => {
+            {visibleItems.map((item) => {
               const Icon = item.icon;
               const isNovelEntry = item.to === "/novels";
 
@@ -250,7 +259,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               );
             })}
           </div>
-        ))}
+          );
+        })}
       </nav>
     </aside>
   );

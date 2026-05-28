@@ -88,6 +88,7 @@ export class AgentRunTaskAdapter {
     status?: TaskStatus;
     keyword?: string;
     take: number;
+    userId?: string;
   }): Promise<UnifiedTaskSummary[]> {
     const archivedIds = await getArchivedTaskIds("agent_run");
     const rows = await prisma.agentRun.findMany({
@@ -106,6 +107,14 @@ export class AgentRunTaskAdapter {
               { goal: { contains: input.keyword } },
               { id: { contains: input.keyword } },
             ],
+          }
+          : {}),
+        // 如果指定了用户ID，只返回该用户的代理运行任务
+        ...(input.userId
+          ? {
+            novel: {
+              userId: input.userId,
+            },
           }
           : {}),
         ...buildAgentRunTaskCenterVisibilityWhere(),

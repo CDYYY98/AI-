@@ -4,6 +4,7 @@ import {
   runWithLlmUsageTracking,
   type LlmUsageTrackingContext,
 } from "../../../llm/usageTracking";
+import { newApiService } from "../../auth/NewApiService";
 import type {
   DirectorPolicyMode,
   DirectorRuntimeProjection,
@@ -250,6 +251,20 @@ export class NovelDirectorService {
       .then((context) => runWithLlmUsageTracking(context, runner));
   }
 
+  private getCreatedByUserIdFromSeedPayload(seedPayloadJson?: string | null): string | null {
+    if (!seedPayloadJson?.trim()) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(seedPayloadJson) as { createdByUserId?: unknown };
+      return typeof parsed.createdByUserId === "string" && parsed.createdByUserId.trim()
+        ? parsed.createdByUserId.trim()
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
   private async buildDirectorUsageContext(taskId: string): Promise<LlmUsageTrackingContext> {
     const normalizedTaskId = taskId.trim();
     const task = normalizedTaskId
@@ -257,17 +272,37 @@ export class NovelDirectorService {
         where: { id: normalizedTaskId },
         select: {
           novelId: true,
+          seedPayloadJson: true,
           directorRun: {
             select: { id: true },
           },
         },
       }).catch(() => null)
       : null;
+    const seedUserId = this.getCreatedByUserIdFromSeedPayload(task?.seedPayloadJson);
+    const novelOwner = task?.novelId
+      ? await prisma.novel.findUnique({
+        where: { id: task.novelId },
+        select: { ownerUserId: true },
+      }).catch(() => null)
+      : null;
+    const userId = seedUserId ?? novelOwner?.ownerUserId ?? null;
+    const user = userId
+      ? await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, apiToken: true },
+      }).catch(() => null)
+      : null;
+    const userApiToken = user?.apiToken?.trim()
+      || (user?.email ? (await newApiService.createToken(user.email).catch(() => null))?.key ?? null : null);
     return {
       workflowTaskId: normalizedTaskId || null,
       directorTelemetry: true,
       novelId: task?.novelId ?? null,
       directorRunId: task?.directorRun?.id ?? (normalizedTaskId || null),
+      userId,
+      userEmail: user?.email ?? null,
+      userApiToken,
     };
   }
 

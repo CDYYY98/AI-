@@ -45,9 +45,10 @@ import {
 import { buildNovelWorkflowDetailSteps } from "../novelWorkflowDetailSteps";
 import { buildWorkflowExplainability } from "../novelWorkflowExplainability";
 import { buildNovelWorkflowNextActionLabel } from "../novelWorkflowTaskSummary";
+import { selectVisibleWorkflowRows } from "../workflowTaskVisibility";
 
 function buildOwnerLabel(row: {
-  novel?: { title: string } | null;
+  novel?: { title: string; ownerUserId?: string | null } | null;
   title: string;
 }): string {
   return row.novel?.title?.trim() || row.title.trim() || "小说主任务";
@@ -70,6 +71,30 @@ function parseLinkedPipelineJobId(seedPayloadJson?: string | null): string | nul
   } catch {
     return null;
   }
+}
+function getCreatedByUserIdFromSeedPayload(seedPayloadJson?: string | null): string | null {
+  if (!seedPayloadJson?.trim()) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(seedPayloadJson) as { createdByUserId?: unknown };
+    return typeof parsed.createdByUserId === "string" && parsed.createdByUserId.trim()
+      ? parsed.createdByUserId.trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function workflowRowBelongsToUser(row: {
+  novelId?: string | null;
+  seedPayloadJson?: string | null;
+  novel?: { ownerUserId?: string | null } | null;
+}, userId?: string | null): boolean {
+  const normalizedUserId = userId?.trim();
+  return !normalizedUserId
+    || row.novel?.ownerUserId === normalizedUserId
+    || (!row.novelId && getCreatedByUserIdFromSeedPayload(row.seedPayloadJson) === normalizedUserId);
 }
 
 function parseTaskNotice(seedPayloadJson?: string | null): DirectorTaskNotice | null {
@@ -406,15 +431,31 @@ export class NovelWorkflowTaskAdapter {
   private readonly directorCommandService = new DirectorCommandService(this.workflowService);
   readonly novelDirectorService = {
     continueTask: (taskId: string, input?: Parameters<DirectorCommandService["enqueueContinueCommand"]>[1]) =>
-      this.directorCommandService.enqueueContinueCommand(taskId, input).then(() => undefined),
+      this.continueWorkflowTask(taskId, input),
   };
+
+  private async continueWorkflowTask(
+    taskId: string,
+    input?: Parameters<DirectorCommandService["enqueueContinueCommand"]>[1],
+  ): Promise<void> {
+    const row = await this.workflowService.getTaskById(taskId);
+    if (!row) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (row.lane === "auto_director") {
+      await this.directorCommandService.enqueueContinueCommand(taskId, input);
+      return;
+    }
+    await this.workflowService.continueTask(taskId);
+  }
 
   async list(input: {
     status?: TaskStatus;
     keyword?: string;
     take: number;
+    userId?: string;
   }): Promise<UnifiedTaskSummary[]> {
-    const archivedIds = await getArchivedTaskIds("novel_workflow");
+    const archivedIds = await getArchivedTaskIds("novel_workflow", { userId: input.userId });
     const rows = await prisma.novelWorkflowTask.findMany({
       where: {
         ...(archivedIds.length
@@ -424,7 +465,15 @@ export class NovelWorkflowTaskAdapter {
             },
           }
           : {}),
-        lane: "auto_director",
+        lane: { in: ["auto_director", "manual_create"] },
+        ...(input.userId
+          ? {
+            OR: [
+              { novel: { is: { ownerUserId: input.userId } } },
+              { novelId: null },
+            ],
+          }
+          : {}),
         ...(input.status ? { status: input.status } : {}),
         ...(input.keyword
           ? {
@@ -440,6 +489,7 @@ export class NovelWorkflowTaskAdapter {
         novel: {
           select: {
             title: true,
+            ownerUserId: true,
           },
         },
       },
@@ -459,7 +509,15 @@ export class NovelWorkflowTaskAdapter {
               },
             }
             : {}),
-          lane: "auto_director",
+          lane: { in: ["auto_director", "manual_create"] },
+          ...(input.userId
+            ? {
+              OR: [
+                { novel: { is: { ownerUserId: input.userId } } },
+                { novelId: null },
+              ],
+            }
+            : {}),
           ...(input.status ? { status: input.status } : {}),
           ...(input.keyword
             ? {
@@ -475,6 +533,7 @@ export class NovelWorkflowTaskAdapter {
           novel: {
             select: {
               title: true,
+              ownerUserId: true,
             },
           },
         },
@@ -483,19 +542,13 @@ export class NovelWorkflowTaskAdapter {
       })
       : rows;
 
-    const visibleRows = normalizedRows.filter((row) => {
-      if (row.lane !== "manual_create" || !row.novelId) {
-        return true;
-      }
-      return !normalizedRows.some((candidate) =>
-        candidate.id !== row.id
-        && candidate.novelId === row.novelId
-        && candidate.lane === "auto_director"
-        && ["queued", "running", "waiting_approval", "succeeded"].includes(candidate.status)
-        && candidate.updatedAt >= row.updatedAt);
-    });
+    const scopedRows = input.userId
+      ? normalizedRows.filter((row) => workflowRowBelongsToUser(row, input.userId))
+      : normalizedRows;
 
-    return visibleRows.map((row) => mapSummary(row));
+    const visibleRows = selectVisibleWorkflowRows(scopedRows, { mode: "task_center" });
+
+    return visibleRows.slice(0, input.take).map((row) => mapSummary(row));
   }
 
   async detail(
@@ -503,9 +556,10 @@ export class NovelWorkflowTaskAdapter {
     options: {
       heal?: boolean;
       seedPayloadMode?: "full" | "compact" | "none";
+      userId?: string | null;
     } = {},
   ): Promise<UnifiedTaskDetail | null> {
-    if (await isTaskArchived("novel_workflow", id)) {
+    if (await isTaskArchived("novel_workflow", id, { userId: options.userId })) {
       return null;
     }
     if (options.heal !== false) {
@@ -518,11 +572,15 @@ export class NovelWorkflowTaskAdapter {
         novel: {
           select: {
             title: true,
+            ownerUserId: true,
           },
         },
       },
     });
     if (!row) {
+      return null;
+    }
+    if (!workflowRowBelongsToUser(row, options.userId)) {
       return null;
     }
 
@@ -657,22 +715,34 @@ export class NovelWorkflowTaskAdapter {
     return detail;
   }
 
-  async archive(id: string): Promise<UnifiedTaskDetail | null> {
-    if (await isTaskArchived("novel_workflow", id)) {
+  async archive(id: string, scope: { userId?: string | null } = {}): Promise<UnifiedTaskDetail | null> {
+    if (await isTaskArchived("novel_workflow", id, scope)) {
       return null;
     }
 
     const row = await prisma.novelWorkflowTask.findUnique({
       where: { id },
-      select: { status: true },
+      select: {
+        status: true,
+        novelId: true,
+        seedPayloadJson: true,
+        novel: {
+          select: {
+            ownerUserId: true,
+          },
+        },
+      },
     });
     if (!row) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (!workflowRowBelongsToUser(row, scope.userId)) {
       throw new AppError("Task not found.", 404);
     }
     if (!isArchivableTaskStatus(row.status as TaskStatus)) {
       throw new AppError("Only completed, failed, or cancelled tasks can be archived.", 400);
     }
-    await recordTaskArchive("novel_workflow", id);
+    await recordTaskArchive("novel_workflow", id, scope);
     return null;
   }
 }

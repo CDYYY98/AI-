@@ -5,6 +5,7 @@ export interface MobileNavItem {
   label: string;
   to: string;
   group: MobilePrimaryNavKey;
+  adminOnly?: boolean;
 }
 
 export interface MobileNavGroup {
@@ -82,9 +83,9 @@ const moreNavGroups: MobileNavGroup[] = [
     items: [
       { key: "worlds", label: "世界观", to: "/worlds", group: "more" },
       { key: "world-generator", label: "世界生成", to: "/worlds/generator", group: "more" },
-      { key: "prompt-workbench", label: "提示词管理", to: "/prompt-workbench", group: "more" },
-      { key: "model-routes", label: "模型路由", to: "/settings/model-routes", group: "more" },
-      { key: "settings", label: "系统设置", to: "/settings", group: "more" },
+      { key: "prompt-workbench", label: "提示词管理", to: "/prompt-workbench", group: "more", adminOnly: true },
+      { key: "model-routes", label: "模型路由", to: "/settings/model-routes", group: "more", adminOnly: true },
+      { key: "settings", label: "系统设置", to: "/settings", group: "more", adminOnly: true },
     ],
   },
 ];
@@ -93,8 +94,13 @@ export function getMobilePrimaryNavItems(): MobileNavItem[] {
   return primaryNavItems;
 }
 
-export function getMobileMoreNavGroups(): MobileNavGroup[] {
-  return moreNavGroups;
+export function getMobileMoreNavGroups(options: { isAdmin?: boolean } = {}): MobileNavGroup[] {
+  return moreNavGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.adminOnly || options.isAdmin),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 export function getMobileRoutePattern(pathname: string): MobileRoutePattern | undefined {

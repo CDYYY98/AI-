@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import DesktopBrandMark from "../DesktopBrandMark";
+import { useAuth } from "@/components/layout/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -37,13 +38,14 @@ interface MobileSiteShellProps {
 }
 
 export default function MobileSiteShell({ children }: MobileSiteShellProps) {
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const activeGroup = getMobileNavGroupForPath(location.pathname);
   const pageTitle = getMobilePageTitle(location.pathname);
   const primaryNavItems = getMobilePrimaryNavItems();
-  const moreNavGroups = getMobileMoreNavGroups();
+  const moreNavGroups = getMobileMoreNavGroups({ isAdmin: user?.role === "admin" });
 
   const openPrimaryItem = (key: MobilePrimaryNavKey, to: string) => {
     if (key === "more") {

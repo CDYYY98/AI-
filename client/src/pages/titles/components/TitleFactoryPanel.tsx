@@ -6,7 +6,6 @@ import { generateNovelTitles, type NovelListResponse } from "@/api/novel";
 import { createTitleLibraryEntry } from "@/api/title";
 import { queryKeys } from "@/api/queryKeys";
 import { generateTitleIdeas } from "@/api/title";
-import LLMSelector from "@/components/common/LLMSelector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -119,13 +118,6 @@ export default function TitleFactoryPanel({ genreTree, novels }: TitleFactoryPan
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border bg-muted/20 p-4">
-        <div className="text-sm font-medium text-foreground">模型设置</div>
-        <div className="mt-3">
-          <LLMSelector showParameters />
-        </div>
-      </div>
-
       <Tabs value={mode} onValueChange={(value) => setMode(value as FactoryMode)} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="novel">按小说生成</TabsTrigger>

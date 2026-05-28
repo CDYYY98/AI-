@@ -71,7 +71,7 @@ export class PipelineTaskAdapter {
     return {
       id: row.id,
       kind: "novel_pipeline",
-      title: `${row.novel.title} (${row.startOrder}-${row.endOrder}章)`,
+      title: row.novel ? `${row.novel.title} (${row.startOrder}-${row.endOrder}章)` : `已删除的小说 (${row.startOrder}-${row.endOrder}章)`,
       status: row.status as TaskStatus,
       progress: row.progress,
       currentStage: row.currentStage,
@@ -84,7 +84,7 @@ export class PipelineTaskAdapter {
       updatedAt: row.updatedAt.toISOString(),
       heartbeatAt: row.heartbeatAt?.toISOString() ?? null,
       ownerId: row.novelId,
-      ownerLabel: row.novel.title,
+      ownerLabel: row.novel?.title ?? "已删除的小说",
       sourceRoute: `/novels/${row.novelId}/edit`,
       noticeCode: notice.noticeCode,
       noticeSummary: notice.noticeSummary,
@@ -103,7 +103,7 @@ export class PipelineTaskAdapter {
       sourceResource: {
         type: "novel",
         id: row.novelId,
-        label: row.novel.title,
+        label: row.novel?.title ?? "已删除的小说",
         route: `/novels/${row.novelId}/edit`,
       },
       targetResources: [{
@@ -119,6 +119,7 @@ export class PipelineTaskAdapter {
     status?: TaskStatus;
     keyword?: string;
     take: number;
+    userId?: string;
   }): Promise<UnifiedTaskSummary[]> {
     if (input.status === "waiting_approval") {
       return [];
@@ -141,6 +142,14 @@ export class PipelineTaskAdapter {
               { novel: { title: { contains: input.keyword } } },
               { id: { contains: input.keyword } },
             ],
+          }
+          : {}),
+        // 如果指定了用户ID，只返回该用户的小说任务
+        ...(input.userId
+          ? {
+            novel: {
+              userId: input.userId,
+            },
           }
           : {}),
       },

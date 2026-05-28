@@ -63,9 +63,16 @@ const autoDirectorFollowUpActionBodySchema = z.object({
 
 router.use(authMiddleware);
 
-router.get("/overview", async (_req, res, next) => {
+function getScopeUserId(req: { auth?: { role: string; userId: string } }): string | undefined {
+  return req.auth?.role !== "admin" ? req.auth?.userId : undefined;
+}
+
+router.get("/overview", async (req, res, next) => {
   try {
-    const data = await taskCenterService.getOverview();
+    // 对于非管理员用户，传递用户ID进行过滤
+    const userId = getScopeUserId(req);
+
+    const data = await taskCenterService.getOverview(userId);
     res.status(200).json({
       success: true,
       data,
@@ -76,9 +83,12 @@ router.get("/overview", async (_req, res, next) => {
   }
 });
 
-router.get("/recovery-candidates", async (_req, res, next) => {
+
+router.get("/recovery-candidates", async (req, res, next) => {
   try {
-    const data = await recoveryTaskService.listRecoveryCandidates();
+    // 对于非管理员用户，传递用户ID进行过滤
+    const userId = getScopeUserId(req);
+    const data = await recoveryTaskService.listRecoveryCandidates(userId);
     res.status(200).json({
       success: true,
       data,
@@ -123,6 +133,7 @@ router.get("/auto-director-follow-ups/:taskId", validate({ params: autoDirectorF
     const readonly = req.query.revalidate === "true";
     const data = await autoDirectorFollowUpService.getDetail(taskId, {
       heal: !readonly,
+      userId: getScopeUserId(req),
     });
     if (!data) {
       res.status(404).json({
@@ -175,6 +186,8 @@ router.get("/", validate({ query: listQuerySchema }), async (req, res, next) => 
       keyword: query.keyword,
       limit: query.limit,
       cursor: query.cursor,
+      // 对于非管理员用户，传递用户ID进行过滤
+      userId: getScopeUserId(req),
     });
     res.status(200).json({
       success: true,
@@ -189,7 +202,7 @@ router.get("/", validate({ query: listQuerySchema }), async (req, res, next) => 
 router.get("/:kind/:id", validate({ params: taskParamsSchema }), async (req, res, next) => {
   try {
     const { kind, id } = req.params as z.infer<typeof taskParamsSchema>;
-    const data = await taskCenterService.getTaskDetail(kind, id);
+    const data = await taskCenterService.getTaskDetail(kind, id, { userId: getScopeUserId(req) });
     if (!data) {
       res.status(404).json({
         success: false,
@@ -243,7 +256,7 @@ router.post("/:kind/:id/cancel", validate({ params: taskParamsSchema }), async (
 router.post("/:kind/:id/archive", validate({ params: taskParamsSchema }), async (req, res, next) => {
   try {
     const { kind, id } = req.params as z.infer<typeof taskParamsSchema>;
-    const data = await taskCenterService.archiveTask(kind, id);
+    const data = await taskCenterService.archiveTask(kind, id, { userId: getScopeUserId(req) });
     res.status(200).json({
       success: true,
       data,

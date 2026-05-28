@@ -76,13 +76,14 @@ export interface RawFollowUpWorkflowRow {
   updatedAt: Date;
   novel?: {
     title: string;
+    ownerUserId?: string | null;
   } | null;
 }
 
 export interface FollowUpWorkflowRow {
   id: string;
   novelId: string | null;
-  lane: "auto_director";
+  lane: "auto_director" | "manual_create";
   title: string;
   status: TaskStatus;
   currentStage: string | null;
@@ -100,6 +101,7 @@ export interface FollowUpWorkflowRow {
   updatedAt: Date;
   novel?: {
     title: string;
+    ownerUserId?: string | null;
   } | null;
 }
 
@@ -153,12 +155,12 @@ function normalizeCheckpointType(value: string | null): NovelWorkflowCheckpoint 
 }
 
 export function normalizeWorkflowRow(row: RawFollowUpWorkflowRow): FollowUpWorkflowRow | null {
-  if (row.lane !== "auto_director" || !isTaskStatus(row.status)) {
+  if ((row.lane !== "auto_director" && row.lane !== "manual_create") || !isTaskStatus(row.status)) {
     return null;
   }
   return {
     ...row,
-    lane: "auto_director",
+    lane: row.lane,
     status: row.status,
     checkpointType: normalizeCheckpointType(row.checkpointType),
   };
@@ -323,7 +325,7 @@ export function projectFollowUpItem(
     novelId: row.novelId,
     novelTitle: getNovelTitle(row),
     taskTitle: row.title,
-    lane: "auto_director",
+    lane: row.lane,
     status: row.status,
     currentStage: row.currentStage,
     checkpointType: row.checkpointType,

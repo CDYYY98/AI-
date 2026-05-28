@@ -13,7 +13,7 @@ import {
 interface TaskCenterDetailSummaryProps {
   task: UnifiedTaskDetail;
   isAutoDirectorTask: boolean;
-  currentModelLabel: string;
+  currentModelLabel?: string;
 }
 
 export default function TaskCenterDetailSummary({
@@ -52,12 +52,6 @@ export default function TaskCenterDetailSummary({
         <div>开始时间：{formatDate(task.startedAt)}</div>
         <div>结束时间：{formatDate(task.finishedAt)}</div>
         <div>重试计数：{task.retryCountLabel}</div>
-        {(task.provider || task.model) ? (
-          <div>调用模型：{task.provider ?? "暂无"} / {task.model ?? "暂无"}</div>
-        ) : null}
-        {isAutoDirectorTask ? (
-          <div>当前界面模型：{currentModelLabel}</div>
-        ) : null}
         {(task.tokenUsage || task.provider || task.model) ? (
           <>
             <div>累计调用：{formatTokenCount(task.tokenUsage?.llmCallCount ?? 0)}</div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/components/layout/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,7 @@ export function AutoDirectorChannelSettingsCard(props: {
   onSave: () => void;
   isSaving: boolean;
 }) {
+  const { user } = useAuth();
   const {
     channelDraft,
     onBaseUrlChange,
@@ -75,6 +77,7 @@ export function AutoDirectorChannelSettingsCard(props: {
     onSave,
     isSaving,
   } = props;
+  const isAdmin = user?.role === "admin";
 
   return (
     <Card className="min-w-0 overflow-hidden">
@@ -137,9 +140,11 @@ export function AutoDirectorChannelSettingsCard(props: {
         ))}
 
         <div className={AUTO_DIRECTOR_MOBILE_CLASSES.channelSettingsActionRow}>
-          <Button variant="outline" asChild className={AUTO_DIRECTOR_MOBILE_CLASSES.fullWidthAction}>
-            <Link to="/settings/model-routes">去看模型路由</Link>
-          </Button>
+          {isAdmin ? (
+            <Button variant="outline" asChild className={AUTO_DIRECTOR_MOBILE_CLASSES.fullWidthAction}>
+              <Link to="/settings/model-routes">去看模型路由</Link>
+            </Button>
+          ) : null}
           <Button className={AUTO_DIRECTOR_MOBILE_CLASSES.fullWidthAction} onClick={onSave} disabled={isSaving}>
             {isSaving ? "保存中..." : "保存导演跟进通道配置"}
           </Button>

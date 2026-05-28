@@ -13,6 +13,11 @@ declare global {
 }
 
 function resolveSqliteDatabasePath(databaseUrl: string): string {
+  // 优先使用环境变量指定的绝对路径
+  const envPath = process.env.DATABASE_PATH?.trim();
+  if (envPath && path.isAbsolute(envPath)) {
+    return envPath;
+  }
   const filePath = databaseUrl.slice("file:".length) || "./dev.db";
   return path.isAbsolute(filePath) ? filePath : resolveDatabaseFilePath(filePath);
 }

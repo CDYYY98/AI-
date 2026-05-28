@@ -18,6 +18,41 @@ function joinErrorParts(parts: Array<string | undefined>): string {
   return parts.map((part) => part?.trim() ?? "").filter(Boolean).join(" | ");
 }
 
+const INSPIRATION_PER_USD = Number(process.env.INSPIRATION_PER_USD || "33333");
+
+function quotaToInspiration(value: number): number {
+  return Math.max(1, Math.ceil(Math.max(0, value) * INSPIRATION_PER_USD));
+}
+
+function normalizeQuotaErrorMessage(message: string): string | null {
+  const normalized = message.replace(/＄/g, "$");
+  const isQuotaError = /token quota is not enough|insufficient balance|quota.*not enough|额度不足|余额不足|预扣费额度失败|用户剩余额度|需要预扣费额度/i
+    .test(normalized);
+  if (!isQuotaError) {
+    return null;
+  }
+
+  const match = normalized.match(/(?:remain quota|用户剩余额度)[:：]\s*\$?\s*([0-9.]+).*?(?:need quota|需要预扣费额度)[:：]\s*\$?\s*([0-9.]+)/i);
+  if (/预扣费额度失败|需要预扣费额度/i.test(normalized)) {
+    const remain = match ? Number(match[1]) : NaN;
+    if (!Number.isFinite(remain)) {
+      return "灵感值不足，请补充灵感值后继续。";
+    }
+    return `灵感值不足，当前剩余 ${Math.max(0, Math.floor(remain * INSPIRATION_PER_USD))} 灵感值，请补充后继续。`;
+  }
+  if (!match) {
+    return "灵感值不足，请补充灵感值后继续。";
+  }
+
+  const remain = Number(match[1]);
+  const need = Number(match[2]);
+  if (!Number.isFinite(remain) || !Number.isFinite(need)) {
+    return "灵感值不足，请补充灵感值后继续。";
+  }
+
+  return `灵感值不足，本次操作预计需要 ${quotaToInspiration(need)} 灵感值，当前剩余 ${Math.max(0, Math.floor(remain * INSPIRATION_PER_USD))} 灵感值。`;
+}
+
 const VALIDATION_FIELD_LABELS: Record<string, string> = {
   id: "项目 ID",
   field: "字段",
@@ -233,6 +268,15 @@ export function errorHandler(
 
   if (error instanceof AppError) {
     const detail = typeof error.details === "string" ? error.details : undefined;
+    const quotaMessage = normalizeQuotaErrorMessage(joinErrorParts([error.message, detail]));
+    if (quotaMessage) {
+      setRequestErrorMessage(res, quotaMessage);
+      res.status(402).json({
+        success: false,
+        error: quotaMessage,
+      });
+      return;
+    }
     setRequestErrorMessage(res, error.message, detail);
     if (error.statusCode >= 500) {
       logServerError(req, error);
@@ -246,6 +290,17 @@ export function errorHandler(
   }
 
   const message = error instanceof Error ? error.message : "服务器发生未知错误。";
+  const quotaMessage = normalizeQuotaErrorMessage(message);
+  if (quotaMessage) {
+    setRequestErrorMessage(res, quotaMessage);
+    logServerError(req, error);
+    res.status(402).json({
+      success: false,
+      error: quotaMessage,
+    });
+    return;
+  }
+
   const upstreamConnectionMessage = formatUpstreamConnectionError(error);
   if (upstreamConnectionMessage) {
     setRequestErrorMessage(res, upstreamConnectionMessage);

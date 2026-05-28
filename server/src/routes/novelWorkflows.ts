@@ -106,13 +106,33 @@ router.post("/:id/continue", validate({ params: continueParamsSchema, body: cont
   try {
     const { id } = req.params as z.infer<typeof continueParamsSchema>;
     const body = req.body as z.infer<typeof continueBodySchema>;
-    const data = body.continuationMode === "resume"
-      ? await directorCommandService.enqueueApproveGateCommand(id, {
-        continuationMode: body.continuationMode,
-      })
-      : await directorCommandService.enqueueContinueCommand(id, {
-        continuationMode: body.continuationMode,
-      });
+    const task = await workflowService.getTaskById(id);
+    if (!task) {
+      res.status(404).json({
+        success: false,
+        error: "Task not found.",
+      } satisfies ApiResponse<null>);
+      return;
+    }
+    const data = task.lane === "auto_director"
+      ? (body.continuationMode === "resume"
+        ? await directorCommandService.enqueueApproveGateCommand(id, {
+          continuationMode: body.continuationMode,
+        })
+        : await directorCommandService.enqueueContinueCommand(id, {
+          continuationMode: body.continuationMode,
+        }))
+      : await workflowService.continueTask(id).then((row) => ({
+        commandId: `workflow-${row.id}-${Date.now()}`,
+        taskId: row.id,
+        novelId: row.novelId,
+        commandType: "continue" as const,
+        status: "succeeded" as const,
+        leaseExpiresAt: null,
+        runtimeId: null,
+        runtimeStatus: null,
+        projectionUrl: `/api/tasks/novel_workflow/${row.id}`,
+      }));
     res.status(202).json({
       success: true,
       data,

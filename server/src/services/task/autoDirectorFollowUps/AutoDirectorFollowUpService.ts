@@ -37,6 +37,31 @@ import {
   type RawFollowUpWorkflowRow,
 } from "./autoDirectorFollowUpProjection";
 import { loadRecentAutoDirectorAutoApprovalRecords } from "./autoDirectorAutoApprovalAudit";
+import { selectVisibleWorkflowRows } from "../workflowTaskVisibility";
+
+type FollowUpScope = {
+  userId?: string | null;
+};
+
+function getCreatedByUserIdFromSeedPayload(seedPayloadJson?: string | null): string | null {
+  if (!seedPayloadJson?.trim()) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(seedPayloadJson) as { createdByUserId?: unknown };
+    return typeof parsed.createdByUserId === "string" && parsed.createdByUserId.trim()
+      ? parsed.createdByUserId.trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
+function rowBelongsToScope(row: FollowUpWorkflowRow, scope: FollowUpScope = {}): boolean {
+  const userId = scope.userId?.trim();
+  return !userId
+    || row.novel?.ownerUserId === userId
+    || (!row.novelId && getCreatedByUserIdFromSeedPayload(row.seedPayloadJson) === userId);
+}
 
 function isMissingTableError(error: unknown): boolean {
   return typeof error === "object"
@@ -59,8 +84,8 @@ export class AutoDirectorFollowUpService {
 
   private readonly workflowTaskAdapter = new NovelWorkflowTaskAdapter();
 
-  async getOverview(): Promise<AutoDirectorFollowUpOverview> {
-    const rows = await this.loadRows();
+  async getOverview(scope: FollowUpScope = {}): Promise<AutoDirectorFollowUpOverview> {
+    const rows = await this.loadRows(scope);
     const knownTaskIds = new Set(rows.map((row) => row.id));
     const taskById = new Map(rows.map((row) => [row.id, row]));
     const channelSettings = await getAutoDirectorChannelSettings();
@@ -77,8 +102,8 @@ export class AutoDirectorFollowUpService {
     };
   }
 
-  async list(input: AutoDirectorFollowUpListInput = {}): Promise<AutoDirectorFollowUpListResponse> {
-    const rows = await this.loadRows();
+  async list(input: AutoDirectorFollowUpListInput & FollowUpScope = {}): Promise<AutoDirectorFollowUpListResponse> {
+    const rows = await this.loadRows({ userId: input.userId });
     const knownTaskIds = new Set(rows.map((row) => row.id));
     const taskById = new Map(rows.map((row) => [row.id, row]));
     const channelSettings = await getAutoDirectorChannelSettings();
@@ -114,7 +139,7 @@ export class AutoDirectorFollowUpService {
     };
   }
 
-  async getDetail(taskId: string, options: { heal?: boolean } = {}): Promise<AutoDirectorFollowUpDetail | null> {
+  async getDetail(taskId: string, options: { heal?: boolean } & FollowUpScope = {}): Promise<AutoDirectorFollowUpDetail | null> {
     if (await isTaskArchived("novel_workflow", taskId)) {
       return null;
     }
@@ -129,12 +154,16 @@ export class AutoDirectorFollowUpService {
         novel: {
           select: {
             title: true,
+            ownerUserId: true,
           },
         },
       },
     }) as RawFollowUpWorkflowRow | null;
     const row = rawRow ? normalizeWorkflowRow(rawRow) : null;
     if (!row) {
+      return null;
+    }
+    if (!rowBelongsToScope(row, options)) {
       return null;
     }
 
@@ -156,6 +185,7 @@ export class AutoDirectorFollowUpService {
 
     const task = await this.workflowTaskAdapter.detail(taskId, {
       heal: options.heal,
+      userId: options.userId,
     });
     if (!task) {
       return null;
@@ -241,22 +271,33 @@ export class AutoDirectorFollowUpService {
     }, taskById));
   }
 
-  private async loadRows(): Promise<FollowUpWorkflowRow[]> {
-    const archivedIds = await getArchivedTaskIds("novel_workflow");
-    const rows = await this.fetchRows(archivedIds);
+  private async loadRows(scope: FollowUpScope = {}): Promise<FollowUpWorkflowRow[]> {
+    const archivedIds = await getArchivedTaskIds("novel_workflow", scope);
+    const rows = await this.fetchRows(archivedIds, scope);
     const healed = await Promise.all(
       rows.map((row) => this.workflowService.healAutoDirectorTaskState(row.id, row)),
     );
     if (!healed.some(Boolean)) {
-      return rows;
+      return selectVisibleWorkflowRows(rows, { mode: "follow_up" });
     }
-    return this.fetchRows(archivedIds);
+    return selectVisibleWorkflowRows(await this.fetchRows(archivedIds, scope), { mode: "follow_up" });
   }
 
-  private async fetchRows(archivedIds: string[]): Promise<FollowUpWorkflowRow[]> {
+  private async fetchRows(archivedIds: string[], scope: FollowUpScope = {}): Promise<FollowUpWorkflowRow[]> {
+    const userId = scope.userId?.trim();
     const rawRows = await prisma.novelWorkflowTask.findMany({
       where: {
-        lane: "auto_director",
+        lane: {
+          in: ["auto_director", "manual_create"],
+        },
+        ...(userId
+          ? {
+            OR: [
+              { novel: { is: { ownerUserId: userId } } },
+              { novelId: null },
+            ],
+          }
+          : {}),
         ...(archivedIds.length > 0
           ? {
             id: {
@@ -269,6 +310,7 @@ export class AutoDirectorFollowUpService {
         novel: {
           select: {
             title: true,
+            ownerUserId: true,
           },
         },
       },
@@ -277,6 +319,8 @@ export class AutoDirectorFollowUpService {
 
     return rawRows
       .map((row) => normalizeWorkflowRow(row))
-      .filter((row): row is FollowUpWorkflowRow => Boolean(row));
+      .filter((row): row is FollowUpWorkflowRow => {
+        return Boolean(row) && rowBelongsToScope(row as FollowUpWorkflowRow, scope);
+      });
   }
 }

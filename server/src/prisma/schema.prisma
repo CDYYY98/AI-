@@ -307,6 +307,8 @@ enum CharacterGender {
 model Novel {
   id                String      @id @default(cuid())
   title             String
+  userId            String?
+  ownerUserId       String?
   description       String?
   targetAudience    String?
   bookSellingPoint  String?
@@ -1291,6 +1293,11 @@ model User {
   passwordHash String
   role         String   @default("user")
   isActive     Boolean  @default(true)
+  apiToken     String?
+  apiTokenName String?
+  apiQuota     Float    @default(0)
+  accountTier  String   @default("trial")
+  archivedTasks TaskCenterArchive[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -2663,10 +2670,13 @@ model RagIndexJob {
 
 model TaskCenterArchive {
   id         String   @id @default(cuid())
+  userId     String?
   taskKind   String
   taskId     String
   archivedAt DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  @@unique([taskKind, taskId])
+  @@unique([userId, taskKind, taskId])
   @@index([taskKind, archivedAt])
+  @@index([userId, archivedAt])
 }

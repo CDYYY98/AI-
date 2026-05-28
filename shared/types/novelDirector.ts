@@ -537,6 +537,7 @@ export interface DirectorTakeoverResponse {
 }
 
 export interface DirectorProjectContextInput {
+  createdByUserId?: string;
   title?: string;
   description?: string;
   targetAudience?: string;

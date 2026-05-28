@@ -7,7 +7,7 @@ import { queryKeys } from "@/api/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { APP_RUNTIME, APP_RUNTIME_IS_PACKAGED } from "@/lib/constants";
+import { API_BASE_URL, APP_RUNTIME, APP_RUNTIME_IS_PACKAGED } from "@/lib/constants";
 import DesktopLegacyDataImportCard from "./DesktopLegacyDataImportCard";
 
 function hasUsableDesktopProviderConfig(providerConfigs: APIKeyStatus[]): boolean {
@@ -16,7 +16,8 @@ function hasUsableDesktopProviderConfig(providerConfigs: APIKeyStatus[]): boolea
 
 export default function DesktopModelSetupGate() {
   const location = useLocation();
-  const shouldCheckDesktopSetup = APP_RUNTIME === "desktop" && APP_RUNTIME_IS_PACKAGED;
+  const isRemoteApi = API_BASE_URL.includes("118.190.162.251") || !API_BASE_URL.includes("127.0.0.1");
+  const shouldCheckDesktopSetup = APP_RUNTIME === "desktop" && APP_RUNTIME_IS_PACKAGED && !isRemoteApi;
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings.apiKeys,
     queryFn: getAPIKeySettings,

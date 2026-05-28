@@ -39,6 +39,45 @@ const overviewTaskKinds: TaskKind[] = [
   "style_extraction",
 ];
 
+function getCreatedByUserIdFromSeedPayload(seedPayloadJson?: string | null): string | null {
+  if (!seedPayloadJson?.trim()) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(seedPayloadJson) as { createdByUserId?: unknown };
+    return typeof parsed.createdByUserId === "string" && parsed.createdByUserId.trim()
+      ? parsed.createdByUserId.trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function groupWorkflowRowsByStatus(
+  rows: Array<{
+    status: string;
+    novelId: string | null;
+    seedPayloadJson: string | null;
+    novel?: { ownerUserId: string | null } | null;
+  }>,
+  userId?: string,
+) {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const belongsToUser = !userId
+      || row.novel?.ownerUserId === userId
+      || (!row.novelId && getCreatedByUserIdFromSeedPayload(row.seedPayloadJson) === userId);
+    if (!belongsToUser) {
+      continue;
+    }
+    counts.set(row.status, (counts.get(row.status) ?? 0) + 1);
+  }
+  return Array.from(counts.entries()).map(([status, count]) => ({
+    status,
+    _count: { _all: count },
+  }));
+}
+
 export class TaskCenterService {
   private readonly novelService = new NovelService();
 
@@ -56,8 +95,8 @@ export class TaskCenterService {
 
   private readonly styleExtractionAdapter = new StyleExtractionTaskAdapter();
 
-  async getOverview(): Promise<TaskOverviewSummary> {
-    const archivedIdsByKind = await getArchivedTaskIdsByKind(overviewTaskKinds);
+  async getOverview(userId?: string): Promise<TaskOverviewSummary> {
+    const archivedIdsByKind = await getArchivedTaskIdsByKind(overviewTaskKinds, { userId });
     const archivedBookIds = archivedIdsByKind.get("book_analysis") ?? [];
     const archivedPipelineIds = archivedIdsByKind.get("novel_pipeline") ?? [];
     const archivedKnowledgeIds = archivedIdsByKind.get("knowledge_document") ?? [];
@@ -65,6 +104,16 @@ export class TaskCenterService {
     const archivedAgentIds = archivedIdsByKind.get("agent_run") ?? [];
     const archivedWorkflowIds = archivedIdsByKind.get("novel_workflow") ?? [];
     const archivedStyleExtractionIds = archivedIdsByKind.get("style_extraction") ?? [];
+
+    // 如果指定了用户ID，获取该用户的小说ID列表
+    let userNovelIds: string[] = [];
+    if (userId) {
+      const userNovels = await prisma.novel.findMany({
+        where: { ownerUserId: userId },
+        select: { id: true }
+      });
+      userNovelIds = userNovels.map(n => n.id);
+    }
 
     const [
       bookRows,
@@ -77,7 +126,7 @@ export class TaskCenterService {
       bookRecoveryCount,
       pipelineRecoveryCount,
       imageRecoveryCount,
-      workflowRecoveryCount,
+      workflowRecoveryRows,
       styleExtractionRecoveryCount,
     ] = await Promise.all([
       prisma.bookAnalysis.groupBy({
@@ -92,6 +141,7 @@ export class TaskCenterService {
         by: ["status"],
         where: {
           ...(archivedPipelineIds.length ? { id: { notIn: archivedPipelineIds } } : {}),
+          ...(userId ? { novelId: { in: userNovelIds } } : {}),
         },
         _count: { _all: true },
       }),
@@ -117,13 +167,29 @@ export class TaskCenterService {
         },
         _count: { _all: true },
       }),
-      prisma.novelWorkflowTask.groupBy({
-        by: ["status"],
+      prisma.novelWorkflowTask.findMany({
         where: {
           lane: "auto_director",
           ...(archivedWorkflowIds.length ? { id: { notIn: archivedWorkflowIds } } : {}),
+          ...(userId
+            ? {
+              OR: [
+                { novel: { is: { ownerUserId: userId } } },
+                { novelId: null },
+              ],
+            }
+            : {}),
         },
-        _count: { _all: true },
+        select: {
+          status: true,
+          novelId: true,
+          seedPayloadJson: true,
+          novel: {
+            select: {
+              ownerUserId: true,
+            },
+          },
+        },
       }),
       prisma.styleExtractionTask.groupBy({
         by: ["status"],
@@ -144,6 +210,7 @@ export class TaskCenterService {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
           ...(archivedPipelineIds.length ? { id: { notIn: archivedPipelineIds } } : {}),
+          ...(userId ? { novelId: { in: userNovelIds } } : {}),
         },
       }),
       prisma.imageGenerationTask.count({
@@ -153,12 +220,30 @@ export class TaskCenterService {
           ...(archivedImageIds.length ? { id: { notIn: archivedImageIds } } : {}),
         },
       }),
-      prisma.novelWorkflowTask.count({
+      prisma.novelWorkflowTask.findMany({
         where: {
           lane: "auto_director",
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
           ...(archivedWorkflowIds.length ? { id: { notIn: archivedWorkflowIds } } : {}),
+          ...(userId
+            ? {
+              OR: [
+                { novel: { is: { ownerUserId: userId } } },
+                { novelId: null },
+              ],
+            }
+            : {}),
+        },
+        select: {
+          status: true,
+          novelId: true,
+          seedPayloadJson: true,
+          novel: {
+            select: {
+              ownerUserId: true,
+            },
+          },
         },
       }),
       prisma.styleExtractionTask.count({
@@ -170,6 +255,10 @@ export class TaskCenterService {
       }),
     ]);
 
+    const workflowStatusRows = groupWorkflowRowsByStatus(workflowRows, userId);
+    const workflowRecoveryCount = workflowRecoveryRows.filter((row) =>
+      groupWorkflowRowsByStatus([row], userId).length > 0).length;
+
     const overview: TaskOverviewSummary = {
       queuedCount: 0,
       runningCount: 0,
@@ -179,7 +268,7 @@ export class TaskCenterService {
       recoveryCandidateCount: bookRecoveryCount + pipelineRecoveryCount + imageRecoveryCount + workflowRecoveryCount + styleExtractionRecoveryCount,
     };
 
-    for (const rows of [bookRows, pipelineRows, knowledgeRows, imageRows, agentRows, workflowRows, styleExtractionRows]) {
+    for (const rows of [bookRows, pipelineRows, knowledgeRows, imageRows, agentRows, workflowStatusRows, styleExtractionRows]) {
       for (const row of rows) {
         const count = row._count._all;
         if (row.status === "queued") {
@@ -211,7 +300,7 @@ export class TaskCenterService {
         : this.bookAdapter.list({ status: filters.status, keyword, take: sourceTake }),
       filters.kind && filters.kind !== "novel_pipeline"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
-        : this.pipelineAdapter.list({ status: filters.status, keyword, take: sourceTake }),
+        : this.pipelineAdapter.list({ status: filters.status, keyword, take: sourceTake, userId: filters.userId }),
       filters.kind && filters.kind !== "knowledge_document"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
         : this.knowledgeAdapter.list({ status: filters.status, keyword, take: sourceTake }),
@@ -223,7 +312,7 @@ export class TaskCenterService {
         : this.agentAdapter.list({ status: filters.status, keyword, take: sourceTake }),
       filters.kind && filters.kind !== "novel_workflow"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
-        : this.workflowAdapter.list({ status: filters.status, keyword, take: sourceTake }),
+        : this.workflowAdapter.list({ status: filters.status, keyword, take: sourceTake, userId: filters.userId }),
       filters.kind && filters.kind !== "style_extraction"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
         : this.styleExtractionAdapter.list({ status: filters.status, keyword, take: sourceTake }),
@@ -250,7 +339,7 @@ export class TaskCenterService {
     };
   }
 
-  async getTaskDetail(kind: TaskKind, id: string): Promise<UnifiedTaskDetail | null> {
+  async getTaskDetail(kind: TaskKind, id: string, scope: { userId?: string | null } = {}): Promise<UnifiedTaskDetail | null> {
     if (kind === "book_analysis") {
       return this.bookAdapter.detail(id);
     }
@@ -264,7 +353,7 @@ export class TaskCenterService {
       return this.agentAdapter.detail(id);
     }
     if (kind === "novel_workflow") {
-      return this.workflowAdapter.detail(id);
+      return this.workflowAdapter.detail(id, { userId: scope.userId });
     }
     if (kind === "style_extraction") {
       return this.styleExtractionAdapter.detail(id);
@@ -335,7 +424,7 @@ export class TaskCenterService {
     throw new AppError(`Unsupported task kind: ${kind}`, 400);
   }
 
-  async archiveTask(kind: TaskKind, id: string): Promise<UnifiedTaskDetail | null> {
+  async archiveTask(kind: TaskKind, id: string, scope: { userId?: string | null } = {}): Promise<UnifiedTaskDetail | null> {
     if (kind === "book_analysis") {
       return this.bookAdapter.archive(id);
     }
@@ -349,7 +438,7 @@ export class TaskCenterService {
       return this.agentAdapter.archive(id);
     }
     if (kind === "novel_workflow") {
-      return this.workflowAdapter.archive(id);
+      return this.workflowAdapter.archive(id, { userId: scope.userId });
     }
     if (kind === "image_generation") {
       return this.imageAdapter.archive(id);

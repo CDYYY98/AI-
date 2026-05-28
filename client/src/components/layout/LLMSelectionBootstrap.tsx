@@ -1,22 +1,27 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAPIKeySettings, getLLMSelectionSetting, saveLLMSelectionSetting } from "@/api/settings";
 import { queryKeys } from "@/api/queryKeys";
 import { resolvePreferredLLMSelection } from "@/lib/llmSelection";
 import { useLLMStore } from "@/store/llmStore";
+import { useAuth } from "./AuthContext";
 
 export default function LLMSelectionBootstrap() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const store = useLLMStore();
   const queryClient = useQueryClient();
   const selectionQuery = useQuery({
     queryKey: queryKeys.settings.llmSelection,
     queryFn: getLLMSelectionSetting,
     staleTime: 5 * 60 * 1000,
+    enabled: !!user,
   });
   const apiKeySettingsQuery = useQuery({
     queryKey: queryKeys.settings.apiKeys,
     queryFn: getAPIKeySettings,
     staleTime: 5 * 60 * 1000,
+    enabled: isAdmin,
   });
 
   const saveSelectionMutation = useMutation({
@@ -27,26 +32,13 @@ export default function LLMSelectionBootstrap() {
   });
 
   const resolvedSelection = useMemo(() => {
-    if (store.hasHydratedSelection) {
-      return null;
-    }
-    if (!selectionQuery.isSuccess && !selectionQuery.isError) {
-      return null;
-    }
     const savedSelection = selectionQuery.data?.data ?? null;
-    if (!apiKeySettingsQuery.isSuccess && !apiKeySettingsQuery.isError) {
-      return null;
-    }
-    if (savedSelection && apiKeySettingsQuery.isError) {
-      return savedSelection;
-    }
+    if (savedSelection) return savedSelection;
+    if (!apiKeySettingsQuery.isSuccess && !apiKeySettingsQuery.isError) return null;
     return resolvePreferredLLMSelection(
-      savedSelection,
+      null,
       apiKeySettingsQuery.data?.data ?? [],
-      {
-        temperature: store.temperature,
-        maxTokens: store.maxTokens,
-      },
+      { temperature: store.temperature, maxTokens: store.maxTokens },
     );
   }, [
     apiKeySettingsQuery.data?.data,
@@ -55,27 +47,16 @@ export default function LLMSelectionBootstrap() {
     selectionQuery.data?.data,
     selectionQuery.isError,
     selectionQuery.isSuccess,
-    store.hasHydratedSelection,
     store.maxTokens,
     store.temperature,
   ]);
 
+  const didSet = useRef(false);
   useEffect(() => {
-    if (store.hasHydratedSelection || !resolvedSelection) {
-      return;
-    }
+    if (!resolvedSelection || didSet.current) return;
     store.setSelection(resolvedSelection);
-    const savedSelection = selectionQuery.data?.data ?? null;
-    if (
-      !savedSelection
-      || savedSelection.provider !== resolvedSelection.provider
-      || savedSelection.model !== resolvedSelection.model
-      || savedSelection.temperature !== resolvedSelection.temperature
-      || savedSelection.maxTokens !== resolvedSelection.maxTokens
-    ) {
-      saveSelectionMutation.mutate(resolvedSelection);
-    }
-  }, [resolvedSelection, saveSelectionMutation, selectionQuery.data?.data, store]);
+    didSet.current = true;
+  }, [resolvedSelection]);
 
   return null;
 }

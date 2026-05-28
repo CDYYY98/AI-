@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { AuthUser } from "@/api/auth";
 import * as authApi from "@/api/auth";
 import { apiClient } from "@/api/client";
@@ -11,7 +11,6 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -30,13 +29,17 @@ function loadToken(): string | null {
 function saveToken(token: string) {
   try {
     localStorage.setItem(TOKEN_KEY, token);
-  } catch { /* noop */ }
+  } catch {
+    // noop
+  }
 }
 
 function clearToken() {
   try {
     localStorage.removeItem(TOKEN_KEY);
-  } catch { /* noop */ }
+  } catch {
+    // noop
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -52,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ user: null, token: null, loading: false });
       return;
     }
+
     apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     authApi.getMe()
       .then((res) => {
@@ -78,16 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: res.data.user, token: res.data.token, loading: false });
   }, []);
 
-  const register = useCallback(async (username: string, email: string, password: string) => {
-    const res = await authApi.register({ username, email, password });
-    if (!res.success || !res.data) {
-      throw new Error(res.error ?? "注册失败");
-    }
-    saveToken(res.data.token);
-    apiClient.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
-    setState({ user: res.data.user, token: res.data.token, loading: false });
-  }, []);
-
   const logout = useCallback(() => {
     clearToken();
     delete apiClient.defaults.headers.common["Authorization"];
@@ -95,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout }}>
+    <AuthContext.Provider value={{ ...state, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

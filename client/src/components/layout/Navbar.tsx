@@ -18,6 +18,22 @@ function AuthButtons() {
   if (user) {
     return (
       <div className="flex items-center gap-2">
+        {user.role === "admin" && (
+          <>
+            <Link to="/admin/users" className="hidden text-xs font-medium text-amber-600 hover:text-amber-800 transition-colors sm:inline">
+              用户管理
+            </Link>
+            <Link to="/admin/models" className="hidden text-xs font-medium text-amber-600 hover:text-amber-800 transition-colors sm:inline">
+              模型管理
+            </Link>
+            <Link to="/admin/logs" className="hidden text-xs font-medium text-amber-600 hover:text-amber-800 transition-colors sm:inline">
+              调用日志
+            </Link>
+          </>
+        )}
+        <Link to="/profile" className="hidden text-xs text-muted-foreground hover:text-foreground transition-colors sm:inline">
+          个人中心
+        </Link>
         <span className="hidden text-xs text-muted-foreground sm:inline">
           {user.username}
         </span>
@@ -56,8 +72,8 @@ export default function Navbar(props: NavbarProps) {
       <div className="flex min-w-0 items-center gap-2">
         <DesktopBrandMark className="h-8 w-8 shrink-0 drop-shadow-none" />
         <div className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate text-sm font-semibold">AI 小说创作工作台</span>
-          <span className="hidden truncate text-[11px] text-muted-foreground sm:block">AI Novel Production Engine</span>
+          <span className="truncate text-sm font-semibold">图灵网文工作台</span>
+          <span className="hidden truncate text-[11px] text-muted-foreground sm:block">Turing Web Novel Workbench</span>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">

@@ -39,6 +39,7 @@ export interface CreateNovelInput {
   sourceKnowledgeDocumentId?: string | null;
   continuationBookAnalysisId?: string | null;
   continuationBookAnalysisSections?: BookAnalysisSectionKey[] | null;
+  userId?: string;
 }
 
 export interface UpdateNovelInput {

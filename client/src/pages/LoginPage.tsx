@@ -34,7 +34,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">AI 小说创作工作台</CardTitle>
+          <CardTitle className="text-2xl">图灵网文工作台</CardTitle>
           <CardDescription>登录您的账号</CardDescription>
         </CardHeader>
         <CardContent>

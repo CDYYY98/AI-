@@ -82,7 +82,7 @@ export class RecoveryTaskService {
     }
   }
 
-  async listRecoveryCandidates(): Promise<RecoverableTaskListResponse> {
+  async listRecoveryCandidates(userId?: string): Promise<RecoverableTaskListResponse> {
     await this.waitUntilReady();
     const [
       workflowRows,
@@ -96,6 +96,7 @@ export class RecoveryTaskService {
           lane: "auto_director",
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
+          ...(userId && { novel: { is: { ownerUserId: userId } } }),
         },
         select: { id: true, updatedAt: true },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
@@ -104,6 +105,7 @@ export class RecoveryTaskService {
         where: {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
+          ...(userId && { novel: { is: { ownerUserId: userId } } }),
         },
         select: { id: true, updatedAt: true },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],

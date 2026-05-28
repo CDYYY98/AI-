@@ -62,6 +62,7 @@
     "jsonwebtoken": "^9.0.3",
     "langchain": "^1.2.28",
     "morgan": "^1.10.1",
+    "nodemailer": "^8.0.7",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -72,6 +73,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/node": "^25.3.3",
+    "@types/nodemailer": "^8.0.0",
     "prisma": "^7.4.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"

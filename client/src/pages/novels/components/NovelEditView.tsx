@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/components/layout/AuthContext";
 import { useIsMobileViewport } from "@/components/layout/mobile/useIsMobileViewport";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,8 @@ export default function NovelEditView(props: NovelEditViewProps) {
 }
 
 function DesktopNovelEditView(props: NovelEditViewProps) {
+  const { user } = useAuth();
+  const canInspectModel = user?.role === "admin";
   const {
     id,
     activeTab,
@@ -276,6 +279,7 @@ function DesktopNovelEditView(props: NovelEditViewProps) {
                       <p>{pendingRepairs}</p>
                     </CardContent>
                   </Card>
+                  {canInspectModel ? (
                   <Card>
                     <CardHeader>
                       <CardTitle>当前模型</CardTitle>
@@ -284,6 +288,7 @@ function DesktopNovelEditView(props: NovelEditViewProps) {
                       <p>{currentModel}</p>
                     </CardContent>
                   </Card>
+                  ) : null}
                   <Card>
                     <CardHeader>
                       <CardTitle>最近任务</CardTitle>

@@ -186,7 +186,7 @@ export function AutoDirectorFollowUpListPanel(props: AutoDirectorFollowUpListPan
                 </div>
 
                 <div className={`mt-2 text-xs text-muted-foreground ${AUTO_DIRECTOR_MOBILE_CLASSES.wrapText}`}>
-                  当前阶段：{item.currentStage ?? "暂无"} · 当前模型：{item.currentModel ?? "暂无"} · 更新时间：{new Date(item.updatedAt).toLocaleString()}
+                  当前阶段：{item.currentStage ?? "暂无"} · 更新时间：{new Date(item.updatedAt).toLocaleString()}
                 </div>
               </button>
             );

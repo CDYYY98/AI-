@@ -204,6 +204,35 @@ function writeDeployConfig() {
   }
 }
 
+function patchDesktopRemoteApi() {
+  const apiBaseUrl = (process.env.AI_NOVEL_API_BASE_URL || "").trim();
+  if (!apiBaseUrl) return;
+
+  // 直接修改编译后的 paths.js，把 apiBaseUrl 写死
+  const pathsJs = path.join(appDir, "dist", "runtime", "paths.js");
+  if (fs.existsSync(pathsJs)) {
+    let content = fs.readFileSync(pathsJs, "utf8");
+    content = content.replace(
+      'const remoteApiBaseUrl = deployConfig?.apiBaseUrl?.trim()',
+      `const remoteApiBaseUrl = "${apiBaseUrl}"`,
+    );
+    fs.writeFileSync(pathsJs, content, "utf8");
+    console.log(`[stage:desktop] patched paths.js with remote API: ${apiBaseUrl}`);
+  }
+
+  // 修改 server.js，强制 isRemoteApiConfigured 返回 true
+  const serverJs = path.join(appDir, "dist", "runtime", "server.js");
+  if (fs.existsSync(serverJs)) {
+    let content = fs.readFileSync(serverJs, "utf8");
+    content = content.replace(
+      "function isRemoteApiConfigured() {",
+      `function isRemoteApiConfigured() { process.env.AI_NOVEL_API_BASE_URL = "${apiBaseUrl}";`,
+    );
+    fs.writeFileSync(serverJs, content, "utf8");
+    console.log("[stage:desktop] patched server.js to force remote mode");
+  }
+}
+
 function main() {
   assertExists(clientSourceDir, "built client assets");
 
@@ -222,6 +251,7 @@ function main() {
   copyDirectory(clientSourceDir, clientTargetDir);
   writeDesktopUpdaterConfig();
   writeDeployConfig();
+  patchDesktopRemoteApi();
   syncPrismaRuntime();
   detachStagedNativePackages();
 

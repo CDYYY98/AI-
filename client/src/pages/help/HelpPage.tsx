@@ -6,7 +6,6 @@ import {
   Compass,
   KeyRound,
   ListTodo,
-  Route,
   Sparkles,
   WandSparkles,
   Workflow,
@@ -39,11 +38,6 @@ interface FaqItem {
 }
 
 const guideSteps: GuideStep[] = [
-  {
-    title: "配置模型",
-    description: "先在系统设置里配置模型厂商、API Key 和默认模型，后续自动导演和章节执行才能顺利运行。",
-    icon: KeyRound,
-  },
   {
     title: "输入一句灵感",
     description: "只写题材、主角、冲突或一个模糊想法都可以，AI 会先帮你整理成可开书方向。",
@@ -90,13 +84,6 @@ const goalEntries: GoalEntry[] = [
     href: "/novels",
     action: "打开小说列表",
     icon: BookOpenText,
-  },
-  {
-    title: "配置模型厂商",
-    description: "填写厂商接口、API Key 和默认模型，保证写作链路有可用模型。",
-    href: "/settings",
-    action: "打开系统设置",
-    icon: Route,
   },
   {
     title: "处理任务",
@@ -151,7 +138,7 @@ export default function HelpPage() {
               <Badge variant="outline">推荐路线</Badge>
             </div>
             <h1 className="text-3xl font-semibold tracking-normal text-foreground sm:text-4xl">
-              从一句灵感开始，让 AI 带你写第一本小说
+              从一句灵感开始，AI 带你写第一本小说
             </h1>
             <p className="text-sm leading-6 text-muted-foreground sm:text-base">
               按这条路线走，不需要先会写大纲、角色表或卷规划。你只负责提供想法和做关键选择，AI 会把整本书拆成能继续推进的步骤。
@@ -161,29 +148,9 @@ export default function HelpPage() {
             <Button asChild size="lg">
               <Link to={DIRECTOR_CREATE_LINK}>开始第一本小说</Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link to="/settings">配置模型</Link>
-            </Button>
           </div>
         </div>
       </section>
-
-      <Card className="border-amber-300 bg-amber-50/80">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <KeyRound className="h-5 w-5 text-amber-700" />
-            <CardTitle className="text-lg text-amber-950">开始写作前先配置模型</CardTitle>
-          </div>
-          <CardDescription className="text-amber-900/80">
-            自动导演、正文写作和章节审阅都需要可用模型。先完成模型厂商、API Key 和默认模型配置，再启动开书流程会更顺畅。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="outline">
-            <Link to="/settings">去配置模型</Link>
-          </Button>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>

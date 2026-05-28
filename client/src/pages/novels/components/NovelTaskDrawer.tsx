@@ -8,6 +8,7 @@ import type { CharacterResourceProposalSummary } from "@ai-novel/shared/types/ch
 import type { AutoDirectorAction } from "@ai-novel/shared/types/autoDirectorFollowUp";
 import AICockpit from "@/components/autoDirector/AICockpit";
 import LLMSelector from "@/components/common/LLMSelector";
+import { useAuth } from "@/components/layout/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import TaskCenterManualEditImpactCard from "@/pages/tasks/components/TaskCenterManualEditImpactCard";
 import TaskCenterRuntimePolicyCard from "@/pages/tasks/components/TaskCenterRuntimePolicyCard";
 import type { NovelTaskDrawerState } from "./NovelEditView.types";
@@ -273,6 +274,10 @@ export default function NovelTaskDrawer({
   capabilities,
   onOpenFullTaskCenter,
 }: NovelTaskDrawerState) {
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const canInspectModel = user?.role === "admin";
+  const canSeeUsageDebug = canInspectModel && searchParams.get("debugUsage") === "1";
   const milestones = Array.isArray(task?.meta.milestones)
     ? task.meta.milestones as NovelWorkflowMilestone[]
     : [];
@@ -329,7 +334,7 @@ export default function NovelTaskDrawer({
   };
   const canShowRuntimePolicy = capabilities?.canAdjustRuntimePolicy !== false && Boolean(task?.id && runtimeSnapshot);
   const canShowManualImpact = capabilities?.canInspectManualEditImpact !== false && Boolean(task);
-  const canShowRetryWithOverrideModel = capabilities?.canRetryWithOverrideModel === true;
+  const canShowRetryWithOverrideModel = canInspectModel && capabilities?.canRetryWithOverrideModel === true;
   const canShowFollowUp = capabilities?.availableFollowUps !== false && Boolean(followUp);
 
   return (
@@ -444,7 +449,7 @@ export default function NovelTaskDrawer({
                   {followUp.blockingReason ? (
                     <div className="text-sm text-muted-foreground">阻止动作的原因：{followUp.blockingReason}</div>
                   ) : null}
-                  {followUp.currentModel ? (
+                  {canInspectModel && followUp.currentModel ? (
                     <div className="text-sm text-muted-foreground">当前任务模型：{followUp.currentModel}</div>
                   ) : null}
                   {runtimeHardBlocked && runtimeBlockedReason ? (
@@ -541,6 +546,7 @@ export default function NovelTaskDrawer({
                 )}
               </section>
 
+              {canInspectModel ? (
               <section className="space-y-3">
                 <div className="text-sm font-medium text-foreground">模型信息</div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -561,34 +567,44 @@ export default function NovelTaskDrawer({
                   </div>
                 </div>
               </section>
+              ) : null}
 
               <section className="space-y-3">
-                <div className="text-sm font-medium text-foreground">Token 统计</div>
+                <div className="text-sm font-medium text-foreground">{canSeeUsageDebug ? "Token 统计" : "AI 调用"}</div>
                 {tokenUsage ? (
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-xl border bg-background/80 p-3">
                       <div className="text-xs text-muted-foreground">累计调用次数</div>
                       <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.llmCallCount)}</div>
                     </div>
-                    <div className="rounded-xl border bg-background/80 p-3">
-                      <div className="text-xs text-muted-foreground">累计总 Tokens</div>
-                      <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.totalTokens)}</div>
-                    </div>
-                    <div className="rounded-xl border bg-background/80 p-3">
-                      <div className="text-xs text-muted-foreground">输入 Tokens</div>
-                      <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.promptTokens)}</div>
-                    </div>
-                    <div className="rounded-xl border bg-background/80 p-3">
-                      <div className="text-xs text-muted-foreground">输出 Tokens</div>
-                      <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.completionTokens)}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        最近记录：{formatDate(tokenUsage.lastRecordedAt)}
+                    {canSeeUsageDebug ? (
+                      <>
+                        <div className="rounded-xl border bg-background/80 p-3">
+                          <div className="text-xs text-muted-foreground">累计总 Tokens</div>
+                          <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.totalTokens)}</div>
+                        </div>
+                        <div className="rounded-xl border bg-background/80 p-3">
+                          <div className="text-xs text-muted-foreground">输入 Tokens</div>
+                          <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.promptTokens)}</div>
+                        </div>
+                        <div className="rounded-xl border bg-background/80 p-3">
+                          <div className="text-xs text-muted-foreground">输出 Tokens</div>
+                          <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.completionTokens)}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            最近记录：{formatDate(tokenUsage.lastRecordedAt)}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded-xl border bg-background/80 p-3">
+                        <div className="text-xs text-muted-foreground">最近记录</div>
+                        <div className="mt-1 text-sm font-medium text-foreground">{formatDate(tokenUsage.lastRecordedAt)}</div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed px-4 py-5 text-sm text-muted-foreground">
-                    当前任务还没有累计到可展示的 token 用量；一旦模型开始返回 usage，这里会自动刷新。
+                    当前任务还没有累计到可展示的 AI 调用记录。
                   </div>
                 )}
               </section>

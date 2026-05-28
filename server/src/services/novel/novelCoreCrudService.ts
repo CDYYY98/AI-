@@ -34,12 +34,22 @@ export class NovelCoreCrudService {
     }
   }
 
-  async listNovels({ page, limit }: PaginationInput) {
+  async listNovels({ page, limit, userId }: PaginationInput & { userId?: string }) {
+    const where = userId
+      ? {
+        OR: [
+          { ownerUserId: userId },
+          { userId },
+        ],
+      }
+      : {};
+
     const [items, total] = await Promise.all([
       prisma.novel.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { updatedAt: "desc" },
         select: {
           id: true,
           title: true,
@@ -72,6 +82,7 @@ export class NovelCoreCrudService {
           primaryStoryModeId: true,
           secondaryStoryModeId: true,
           worldId: true,
+          userId: true,
           createdAt: true,
           updatedAt: true,
           genre: { select: { id: true, name: true } },
@@ -79,7 +90,7 @@ export class NovelCoreCrudService {
           _count: { select: { chapters: true, characters: true, plotBeats: true } },
         },
       }),
-      prisma.novel.count(),
+      prisma.novel.count({ where })
     ]);
 
     const latestAutoDirectorTaskByNovelId = await this.listLatestVisibleAutoDirectorTasksByNovelIds(
@@ -260,6 +271,8 @@ export class NovelCoreCrudService {
           && normalizedContinuationBookAnalysisId
             ? continuationBookAnalysisSections
             : null,
+        userId: input.userId || null,
+        ownerUserId: input.userId || null,
       },
     });
 

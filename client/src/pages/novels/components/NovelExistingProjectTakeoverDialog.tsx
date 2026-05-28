@@ -15,6 +15,7 @@ import { getDirectorTakeoverReadiness, startDirectorTakeover } from "@/api/novel
 import { queryKeys } from "@/api/queryKeys";
 import { getStyleBindings, getStyleProfiles } from "@/api/styleEngine";
 import LLMSelector from "@/components/common/LLMSelector";
+import { useAuth } from "@/components/layout/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,6 +139,7 @@ export default function NovelExistingProjectTakeoverDialog({
   defaultEntryStep = "basic",
 }: NovelExistingProjectTakeoverDialogProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const llm = useLLMStore();
   const [open, setOpen] = useState(false);
@@ -151,6 +153,7 @@ export default function NovelExistingProjectTakeoverDialog({
   );
   const autoApprovalDraft = useDirectorAutoApprovalDraft(open);
   const { reset: resetAutoApprovalDraft } = autoApprovalDraft;
+  const canConfigureModel = user?.role === "admin";
 
   const readinessQuery = useQuery({
     queryKey: queryKeys.novels.autoDirectorTakeoverReadiness(novelId),
@@ -319,10 +322,12 @@ export default function NovelExistingProjectTakeoverDialog({
                   )}
                 </div>
               </div>
+              {canConfigureModel ? (
               <div className="min-w-0 rounded-xl border bg-background/80 p-3 sm:p-4">
                 <div className="text-sm font-medium text-foreground">模型设置</div>
                 <div className="mt-3"><LLMSelector /></div>
               </div>
+              ) : null}
               <div className="min-w-0 rounded-xl border bg-background/80 p-3 sm:p-4">
                 <div className="text-sm font-medium text-foreground">自动导演运行方式</div>
                 <div className="mt-3 rounded-lg border bg-muted/15 p-3">

@@ -118,6 +118,16 @@ export interface LLMSelectionSettings {
   maxTokens?: number;
 }
 
+export interface AccountTierModelConfig {
+  provider: LLMProvider;
+  model: string;
+}
+
+export interface AccountTierModelSettings {
+  trial: AccountTierModelConfig | null;
+  paid: AccountTierModelConfig | null;
+}
+
 export interface ModelRoutesResponse {
   taskTypes: ModelRouteTaskType[];
   routes: Array<{
@@ -290,6 +300,16 @@ export async function getLLMSelectionSetting() {
 
 export async function saveLLMSelectionSetting(payload: LLMSelectionSettings) {
   const { data } = await apiClient.put<ApiResponse<LLMSelectionSettings>>("/settings/llm-selection", payload);
+  return data;
+}
+
+export async function getAccountTierModelSettings() {
+  const { data } = await apiClient.get<ApiResponse<AccountTierModelSettings>>("/admin/account-tier-models");
+  return data;
+}
+
+export async function saveAccountTierModelSettings(payload: Partial<AccountTierModelSettings>) {
+  const { data } = await apiClient.put<ApiResponse<AccountTierModelSettings>>("/admin/account-tier-models", payload);
   return data;
 }
 

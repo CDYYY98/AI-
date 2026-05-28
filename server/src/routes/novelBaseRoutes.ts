@@ -3,6 +3,7 @@ import type { ApiResponse } from "@ai-novel/shared/types/api";
 import { NOVEL_LIST_PAGE_LIMIT_DEFAULT, NOVEL_LIST_PAGE_LIMIT_MAX } from "@ai-novel/shared/types/pagination";
 import { z } from "zod";
 import { llmProviderSchema } from "../llm/providerSchema";
+import { authMiddleware } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import { KnowledgeService } from "../services/knowledge/KnowledgeService";
 import { novelCreateResourceRecommendationService } from "../services/novel/NovelCreateResourceRecommendationService";
@@ -140,13 +141,18 @@ interface RegisterNovelBaseRoutesInput {
 
 export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): void {
   const { router } = input;
+  router.use(authMiddleware);
   const novelService = new NovelService();
   const knowledgeService = new KnowledgeService();
 
   router.get("/", validate({ query: paginationSchema }), async (req, res, next) => {
     try {
       const query = paginationSchema.parse(req.query);
-      const data = await novelService.listNovels({ page: query.page, limit: query.limit });
+      const data = await novelService.listNovels({
+        page: query.page,
+        limit: query.limit,
+        ...(req.auth?.role !== "admin" && req.auth?.userId ? { userId: req.auth.userId } : {}),
+      });
       const response: ApiResponse<typeof data> = {
         success: true,
         data,
@@ -160,7 +166,9 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
 
   router.post("/", validate({ body: createNovelSchema }), async (req, res, next) => {
     try {
-      const data = await novelService.createNovel(req.body as z.infer<typeof createNovelSchema>);
+      const body = req.body as z.infer<typeof createNovelSchema> & { userId?: string };
+      if (req.auth?.userId) body.userId = req.auth.userId;
+      const data = await novelService.createNovel(body);
       const response: ApiResponse<typeof data> = {
         success: true,
         data,
@@ -192,6 +200,15 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
       const { id } = req.params as z.infer<typeof idParamsSchema>;
       const data = await novelService.getNovelById(id);
       if (!data) {
+        res.status(404).json({
+          success: false,
+          error: "小说不存在。",
+        } satisfies ApiResponse<null>);
+        return;
+      }
+      // 非管理员只能看自己的小说（userId 为空的老数据放行）
+      const novelUserId = (data as any).userId;
+      if (req.auth?.role !== "admin" && req.auth?.userId && novelUserId && novelUserId !== req.auth.userId) {
         res.status(404).json({
           success: false,
           error: "小说不存在。",

@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
 import {
@@ -205,18 +206,16 @@ function createSplashHtml(): string {
     <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
         <linearGradient id="desktopBrandGradient" x1="14" y1="12" x2="82" y2="84" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#1A5F7A" />
-          <stop offset="1" stop-color="#122033" />
+          <stop stop-color="#F97316" />
+          <stop offset="1" stop-color="#EA580C" />
         </linearGradient>
       </defs>
       <rect x="8" y="8" width="80" height="80" rx="24" fill="url(#desktopBrandGradient)" />
-      <path d="M48 18L67 37L48 78L29 37L48 18Z" fill="#F7F3EA" />
-      <circle cx="48" cy="44" r="6" fill="#133246" />
-      <path d="M38 59L48 67L58 59" stroke="#133246" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
-      <circle cx="69" cy="28" r="4.5" fill="#76E5FF" />
-      <path d="M63 34L57 39" stroke="#76E5FF" stroke-width="4" stroke-linecap="round" />
-      <circle cx="28" cy="65" r="3.5" fill="#F6B24C" />
-      <path d="M34 60L39 54" stroke="#F6B24C" stroke-width="4" stroke-linecap="round" />
+      <path d="M28 28 L48 32 L48 72 L28 68 Z" fill="#F5F5F5" />
+      <path d="M48 32 L68 28 L68 68 L48 72 Z" fill="#E5E5E5" />
+      <path d="M48 32 L48 72" stroke="#9CA3AF" stroke-width="1.5" />
+      <rect x="46" y="18" width="6" height="24" rx="2" fill="#374151" transform="rotate(-35 46 18)" />
+      <polygon points="60,36 65,22 70,26 66,40" fill="#F97316" />
     </svg>
   `;
 
@@ -228,7 +227,7 @@ function createSplashHtml(): string {
         http-equiv="Content-Security-Policy"
         content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"
       />
-      <title>AI 小说创作工作台</title>
+      <title>图灵网文工作台</title>
       <style>
         :root {
           color-scheme: dark;
@@ -301,7 +300,7 @@ function createSplashHtml(): string {
     <body>
       <main class="panel">
         ${brandMark}
-        <div class="title">AI 小说创作工作台</div>
+        <div class="title">图灵网文工作台</div>
         <p class="subtitle">正在准备桌面启动壳和打包后的本地写作引擎。</p>
         <div class="meter"><span></span></div>
       </main>
@@ -332,6 +331,20 @@ function createSplashWindow(): BrowserWindow {
 }
 
 async function bootstrapDesktopApp(): Promise<void> {
+  // 预先加载 deploy.json 设置远程 API 地址
+  try {
+    const deployPath = path.join(process.resourcesPath, "deploy.json");
+    if (fs.existsSync(deployPath)) {
+      const config = JSON.parse(fs.readFileSync(deployPath, "utf-8"));
+      if (config.apiBaseUrl?.trim()) {
+        process.env.AI_NOVEL_API_BASE_URL = config.apiBaseUrl.trim();
+        appendDesktopLog("desktop.bootstrap", `Remote API configured: ${config.apiBaseUrl}`);
+      }
+    }
+  } catch (e) {
+    appendDesktopLog("desktop.bootstrap", `deploy.json read failed: ${e}`);
+  }
+
   appendBootstrapStage("app-ready", "Electron app reported ready.");
   setBootstrapSnapshot(createBootstrapSnapshot({
     state: "launching",
@@ -402,7 +415,7 @@ async function showBootstrapFailureDialog(error: unknown): Promise<void> {
   const errorMessage = error instanceof Error ? error.message : String(error);
   const result = await dialog.showMessageBox({
     type: "error",
-    title: "AI 小说创作工作台启动失败",
+    title: "图灵网文工作台启动失败",
     message: "桌面应用未能完成初始化。",
     detail: `${errorMessage}\n\n日志目录:\n${logDir}\n\n日志文件:\n${logFilePath}`,
     buttons: ["打开日志目录", "复制日志路径", "退出"],

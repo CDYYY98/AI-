@@ -2,6 +2,7 @@ import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
 import { Navigate, useRoutes } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
+import RequireAdmin from "@/components/layout/RequireAdmin";
 import RequireAuth from "@/components/layout/RequireAuth";
 import { featureFlags } from "@/config/featureFlags";
 
@@ -30,6 +31,10 @@ const WorldGenerator = lazy(() => import("@/pages/worlds/WorldGenerator"));
 const WorldWorkspace = lazy(() => import("@/pages/worlds/WorldWorkspace"));
 const WritingFormulaPage = lazy(() => import("@/pages/writingFormula/WritingFormulaPage"));
 const CharacterLibrary = lazy(() => import("@/pages/characters/CharacterLibrary"));
+const AdminUsersPage = lazy(() => import("@/pages/AdminUsersPage"));
+const AdminLogsPage = lazy(() => import("@/pages/AdminLogsPage"));
+const AdminModelsPage = lazy(() => import("@/pages/AdminModelsPage"));
+const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/RegisterPage"));
 
@@ -57,10 +62,10 @@ const routes: RouteObject[] = [
       { path: "genres", element: <GenreManagementPage /> },
       { path: "story-modes", element: <StoryModeManagementPage /> },
       { path: "titles", element: <TitleStudioPage /> },
-      { path: "prompt-workbench", element: <PromptWorkbenchPage /> },
+      { path: "prompt-workbench", element: <RequireAdmin><PromptWorkbenchPage /></RequireAdmin> },
       { path: "anti-ai-rules", element: <AntiAiRulesPage /> },
-      { path: "settings/model-routes", element: <ModelRoutesPage /> },
-      { path: "settings", element: <SettingsPage /> },
+      { path: "settings/model-routes", element: <RequireAdmin><ModelRoutesPage /></RequireAdmin> },
+      { path: "settings", element: <RequireAdmin><SettingsPage /></RequireAdmin> },
       { path: "worlds", element: <WorldList /> },
       {
         path: "worlds/generator",
@@ -73,6 +78,10 @@ const routes: RouteObject[] = [
       { path: "style-engine", element: <WritingFormulaPage /> },
       { path: "writing-formula", element: <Navigate to="/style-engine" replace /> },
       { path: "base-characters", element: <CharacterLibrary /> },
+      { path: "profile", element: <ProfilePage /> },
+      { path: "admin/users", element: <RequireAdmin><AdminUsersPage /></RequireAdmin> },
+      { path: "admin/models", element: <RequireAdmin><AdminModelsPage /></RequireAdmin> },
+      { path: "admin/logs", element: <RequireAdmin><AdminLogsPage /></RequireAdmin> },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },

@@ -2,6 +2,14 @@ import type { LLMProvider } from "@ai-novel/shared/types/llm";
 import type { ModelRouteRequestProtocol } from "@ai-novel/shared/types/novel";
 import { ChatOpenAI } from "@langchain/openai";
 import type { PromptInvocationMeta } from "../prompting/core/promptTypes";
+import { prisma } from "../db/prisma";
+import { newApiService } from "../services/auth/NewApiService";
+import {
+  getAccountTierModelSettings,
+  resolveAccountTierModelKey,
+  type AccountTierModelConfig,
+  type AccountTierModelKey,
+} from "../services/settings/AccountTierModelSettingsService";
 import { secretStore } from "../services/settings/secretStore";
 import { resolveModelTemperature } from "./capabilities";
 import { createAnthropicLLM } from "./anthropicClient";
@@ -15,7 +23,7 @@ import {
   type StructuredOutputProfile,
   type StructuredOutputStrategy,
 } from "./structuredOutput";
-import { attachLLMUsageTracking } from "./usageTracking";
+import { attachLLMUsageTracking, getCurrentLlmUsageTrackingContext } from "./usageTracking";
 import { resolveModel, toStructuredOutputStrategy, type TaskType } from "./modelRouter";
 import {
   getProviderEnvApiKey,
@@ -43,6 +51,7 @@ interface LLMOptions {
   promptMeta?: PromptInvocationMeta;
   modelRoute?: string;
   routeDegraded?: boolean;
+  skipAccountTierModelRouting?: boolean;
 }
 
 export interface ProviderSecret {
@@ -102,6 +111,116 @@ function normalizeOptionalText(value: string | null | undefined): string | undef
   }
   const trimmed = value.trim();
   return trimmed || undefined;
+}
+
+function normalizeNewApiBaseUrl(value: string | undefined): string {
+  return (value?.trim() || "http://127.0.0.1:3001").replace(/\/+$/u, "") + "/v1";
+}
+
+function shouldNormalizeDeveloperRole(baseURL: string): boolean {
+  try {
+    const host = new URL(baseURL).host.toLowerCase();
+    return host !== "api.openai.com";
+  } catch {
+    return true;
+  }
+}
+
+function normalizeDeveloperRolePayload(body: unknown): unknown {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return body;
+  }
+
+  const payload = body as { messages?: Array<Record<string, unknown>>; input?: unknown };
+  const normalizedMessages = Array.isArray(payload.messages)
+    ? payload.messages.map((message) => (
+      message?.role === "developer"
+        ? { ...message, role: "system" }
+        : message
+    ))
+    : undefined;
+
+  if (!normalizedMessages) {
+    return body;
+  }
+
+  return {
+    ...payload,
+    messages: normalizedMessages,
+  };
+}
+
+function createDeveloperRoleCompatibilityFetch(baseURL: string): typeof fetch | undefined {
+  if (!shouldNormalizeDeveloperRole(baseURL) || typeof fetch !== "function") {
+    return undefined;
+  }
+
+  return async (input, init) => {
+    const body = init?.body;
+    if (typeof body !== "string" || !body.includes('"developer"')) {
+      return fetch(input, init);
+    }
+
+    try {
+      const normalizedBody = JSON.stringify(normalizeDeveloperRolePayload(JSON.parse(body)));
+      return fetch(input, { ...init, body: normalizedBody });
+    } catch {
+      return fetch(input, init);
+    }
+  };
+}
+
+async function resolveUsageApiToken(): Promise<string | undefined> {
+  const usageContext = getCurrentLlmUsageTrackingContext();
+  const existingToken = normalizeOptionalText(usageContext?.userApiToken);
+  if (existingToken) {
+    return existingToken;
+  }
+  const userEmail = normalizeOptionalText(usageContext?.userEmail);
+  if (!userEmail) {
+    return undefined;
+  }
+  const token = await newApiService.createToken(userEmail).catch(() => null);
+  return normalizeOptionalText(token?.key);
+}
+
+async function resolveAccountTierModelOverride(
+  options: LLMOptions,
+): Promise<{
+  tier: AccountTierModelKey;
+  config: AccountTierModelConfig;
+} | null> {
+  if (options.skipAccountTierModelRouting) {
+    return null;
+  }
+
+  const usageContext = getCurrentLlmUsageTrackingContext();
+  const userId = normalizeOptionalText(usageContext?.userId);
+  const userEmail = normalizeOptionalText(usageContext?.userEmail);
+  if (!userId && !userEmail) {
+    return null;
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        ...(userId ? [{ id: userId }] : []),
+        ...(userEmail ? [{ email: userEmail }] : []),
+      ],
+    },
+    select: {
+      role: true,
+      accountTier: true,
+    },
+  }).catch(() => null);
+  if (!user || user.role === "admin") {
+    return null;
+  }
+
+  const tier = resolveAccountTierModelKey(user.accountTier);
+  const settings = await getAccountTierModelSettings().catch(() => null);
+  const config = settings?.[tier] ?? null;
+  return config ? { tier, config } : null;
 }
 
 function normalizeOptionalTimeoutMs(value: number | undefined): number | undefined {
@@ -241,13 +360,27 @@ export async function resolveLLMClientOptions(
     resolvedRouteDegraded = route.routeDegraded;
   }
 
+  const accountTierModel = await resolveAccountTierModelOverride(options);
+  if (accountTierModel) {
+    resolvedProvider = accountTierModel.config.provider;
+    resolvedModel = accountTierModel.config.model;
+    resolvedModelRoute = resolvedModelRoute
+      ? `${resolvedModelRoute}:account_tier_${accountTierModel.tier}`
+      : `account_tier_${accountTierModel.tier}`;
+  }
+
   const dbSecret = await resolveProviderSecret(resolvedProvider);
   const providerName = isBuiltInProvider(resolvedProvider)
     ? PROVIDERS[resolvedProvider].name
     : dbSecret?.displayName ?? resolvedProvider;
-  const apiKey = normalizeOptionalText(options.apiKey)
+  const userApiToken = await resolveUsageApiToken();
+  const apiKey = userApiToken
+    ?? normalizeOptionalText(options.apiKey)
     ?? dbSecret?.key
     ?? getProviderEnvApiKey(resolvedProvider);
+  if (userApiToken) {
+    console.log(`[llm.billing] mode=user_token provider=${resolvedProvider} model=${resolvedModel ?? dbSecret?.model ?? getProviderEnvModel(resolvedProvider) ?? "unknown"}`);
+  }
 
   if (!apiKey && providerRequiresApiKey(resolvedProvider)) {
     throw new Error(`未配置 ${providerName} 的 API Key。`);
@@ -261,11 +394,13 @@ export async function resolveLLMClientOptions(
     throw new Error(`未配置 ${providerName} 的默认模型。`);
   }
 
-  const baseURL = resolveProviderBaseUrl(
-    resolvedProvider,
-    options.baseURL ?? dbSecret?.baseURL,
-    dbSecret?.baseURL,
-  );
+  const baseURL = userApiToken
+    ? normalizeNewApiBaseUrl(process.env.NEW_API_URL)
+    : resolveProviderBaseUrl(
+      resolvedProvider,
+      options.baseURL ?? dbSecret?.baseURL,
+      dbSecret?.baseURL,
+    );
   if (!baseURL) {
     throw new Error(`未配置 ${providerName} 的 API URL。`);
   }
@@ -274,7 +409,7 @@ export async function resolveLLMClientOptions(
   const timeoutMs = normalizeOptionalTimeoutMs(options.timeoutMs);
   const concurrencyLimit = normalizeLimitValue(dbSecret?.concurrencyLimit);
   const requestIntervalMs = normalizeLimitValue(dbSecret?.requestIntervalMs);
-  const requestProtocol = options.requestProtocol === "anthropic" ? "anthropic" : "openai_compatible";
+  const requestProtocol = userApiToken ? "openai_compatible" : (options.requestProtocol === "anthropic" ? "anthropic" : "openai_compatible");
   const structuredStrategy = options.structuredStrategy;
   const executionMode = options.executionMode ?? "plain";
   const structuredProfile = executionMode === "structured"
@@ -366,6 +501,7 @@ export function createLLMFromResolvedOptions(resolved: ResolvedLLMClientOptions)
       __includeRawResponse: resolved.includeRawResponse,
       configuration: {
         baseURL: resolved.baseURL,
+        fetch: createDeveloperRoleCompatibilityFetch(resolved.baseURL),
       },
     });
   const meta = {
@@ -391,9 +527,74 @@ export function createLLMFromResolvedOptions(resolved: ResolvedLLMClientOptions)
   return limited;
 }
 
+async function getFallbackProviders(): Promise<Array<{ provider: string; model: string }>> {
+  try {
+    const setting = await prisma.appSetting.findUnique({ where: { key: "model_fallbacks" } });
+    if (!setting?.value) return [];
+    const list = JSON.parse(setting.value) as Array<{ provider: string; model: string }>;
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getLLM(provider?: LLMProvider, options: LLMOptions = {}): Promise<ChatOpenAI> {
   const resolved = await resolveLLMClientOptions(provider, options);
-  return createLLMFromResolvedOptions(resolved);
+  const fallbacks = await getFallbackProviders();
+  const llm = createLLMFromResolvedOptions(resolved);
+
+  if (fallbacks.length === 0) return llm;
+
+  // 包装 invoke/stream，失败时自动切换
+  return wrapWithFallback(llm, resolved, fallbacks, options) as ChatOpenAI;
+}
+
+function wrapWithFallback(
+  primary: ChatOpenAI,
+  resolved: ResolvedLLMClientOptions,
+  fallbacks: Array<{ provider: string; model: string }>,
+  options: LLMOptions,
+): ChatOpenAI {
+  let triedCount = 0;
+
+  const tryFallback = async (): Promise<ChatOpenAI | null> => {
+    if (triedCount >= fallbacks.length) return null;
+    const fb = fallbacks[triedCount++];
+    try {
+      const fbResolved = await resolveLLMClientOptions(fb.provider as LLMProvider, {
+        ...options,
+        model: fb.model,
+        temperature: options.temperature ?? resolved.temperature,
+        taskType: options.taskType,
+        skipAccountTierModelRouting: true,
+      });
+      return createLLMFromResolvedOptions(fbResolved);
+    } catch {
+      return tryFallback();
+    }
+  };
+
+  const isAuthError = (error: unknown): boolean => {
+    const msg = String(error?.toString?.() ?? "");
+    return /authentication|unauthorized|invalid.*api.?key|quota.*exceeded|insufficient.*balance|rate.?limit.*exceeded/i.test(msg);
+  };
+
+  const patchInvoke = (llm: ChatOpenAI) => {
+    const origInvoke = llm.invoke.bind(llm);
+    llm.invoke = (async (input: any, options?: any) => {
+      try {
+        return await origInvoke(input, options);
+      } catch (error) {
+        if (!isAuthError(error)) throw error;
+        const fb = await tryFallback();
+        if (!fb) throw error;
+        return fb.invoke(input, options);
+      }
+    }) as any;
+  };
+
+  patchInvoke(primary);
+  return primary;
 }
 
 export function getResolvedLLMClientOptionsFromInstance(llm: ChatOpenAI): ResolvedLLMClientOptions | undefined {

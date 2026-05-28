@@ -31,6 +31,7 @@ import {
   BOOK_FRAMING_MAX_COMMERCIAL_TAGS,
 } from "@ai-novel/shared/types/novelFraming";
 import { DIRECTOR_AUTO_APPROVAL_POINTS } from "@ai-novel/shared/types/autoDirectorApproval";
+import { requireAuth } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import { llmProviderSchema } from "../llm/providerSchema";
 import { DirectorBookAutomationProjectionService } from "../services/novel/director/DirectorBookAutomationProjectionService";
@@ -44,6 +45,8 @@ const commandService = new DirectorCommandService();
 const snapshotService = new DirectorTaskSnapshotService();
 const novelDirectorService = new NovelDirectorService();
 const projectionService = new DirectorBookAutomationProjectionService();
+
+router.use(requireAuth);
 
 const correctionPresetValues = DIRECTOR_CORRECTION_PRESETS.map((item) => item.value) as [string, ...string[]];
 const takeoverStartPhaseValues = [...DIRECTOR_TAKEOVER_START_PHASES] as [string, ...string[]];
@@ -77,6 +80,7 @@ const autoApprovalSchema = z.object({
 }).optional();
 
 const projectContextSchema = z.object({
+  createdByUserId: z.string().trim().optional(),
   title: z.string().trim().optional(),
   description: z.string().trim().optional(),
   targetAudience: z.string().trim().optional(),
@@ -265,13 +269,21 @@ function accepted<T>(data: T, message: string) {
   } satisfies ApiResponse<T>;
 }
 
+function attachRequestUser<T extends { createdByUserId?: string }>(payload: T, userId?: string): T {
+  return {
+    ...payload,
+    createdByUserId: payload.createdByUserId?.trim() || userId || undefined,
+  };
+}
+
 router.post("/tasks", validate({ body: createTaskSchema }), async (req, res, next) => {
   try {
     const body = req.body as z.infer<typeof createTaskSchema>;
+    const requestUserId = req.auth?.userId;
     let data: DirectorCommandAcceptedResponse;
     switch (body.taskType) {
       case "generate_candidates":
-        data = await commandService.enqueueGenerateCandidatesCommand(body.payload);
+        data = await commandService.enqueueGenerateCandidatesCommand(attachRequestUser(body.payload, requestUserId));
         break;
       case "takeover":
         data = await commandService.enqueueTakeoverCommand(body.payload as DirectorTakeoverRequest);
@@ -295,29 +307,30 @@ router.post("/tasks/:taskId/commands", validate({ params: taskParamsSchema, body
   try {
     const { taskId } = req.params as z.infer<typeof taskParamsSchema>;
     const body = req.body as z.infer<typeof appendCommandSchema>;
+    const requestUserId = req.auth?.userId;
     let data: DirectorCommandAcceptedResponse;
     switch (body.commandType) {
       case "refine_candidates":
         data = await commandService.enqueueRefineCandidatesCommand({
-          ...body.payload,
+          ...attachRequestUser(body.payload, requestUserId),
           workflowTaskId: taskId,
         } as DirectorRefinementRequest);
         break;
       case "patch_candidate":
         data = await commandService.enqueuePatchCandidateCommand({
-          ...body.payload,
+          ...attachRequestUser(body.payload, requestUserId),
           workflowTaskId: taskId,
         } as DirectorCandidatePatchRequest);
         break;
       case "refine_titles":
         data = await commandService.enqueueRefineTitlesCommand({
-          ...body.payload,
+          ...attachRequestUser(body.payload, requestUserId),
           workflowTaskId: taskId,
         } as DirectorCandidateTitleRefineRequest);
         break;
       case "confirm_candidate":
         data = await commandService.enqueueConfirmCandidateCommand({
-          ...body.payload,
+          ...attachRequestUser(body.payload, requestUserId),
           workflowTaskId: taskId,
         } as DirectorConfirmRequest);
         break;

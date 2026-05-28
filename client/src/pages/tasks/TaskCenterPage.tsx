@@ -379,7 +379,6 @@ export default function TaskCenterPage() {
                 <TaskCenterDetailSummary
                   task={selectedTask}
                   isAutoDirectorTask={isAutoDirectorTask}
-                  currentModelLabel={`${llm.provider} / ${llm.model}`}
                 />
                 {selectedTask.noticeCode || selectedTask.noticeSummary ? (
                   <div className="rounded-md border border-amber-300/50 bg-amber-50/70 p-2 text-amber-900">

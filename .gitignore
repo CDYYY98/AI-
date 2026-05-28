@@ -1,6 +1,9 @@
 node_modules/
 dist/
 .turbo/
+.pnpm-store/
+*.zip
+*.tar.gz
 .DS_Store
 .env
 .env.local
@@ -31,4 +34,5 @@ server/src/prisma/dev.db-journal
 server/.tmp/
 desktop/build/
 desktop/runtime-migration-smoke/
+tmp-bin/
 server/prisma-diff-migrations-to-schema.sql

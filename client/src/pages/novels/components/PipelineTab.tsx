@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/components/layout/AuthContext";
 import LLMSelector from "@/components/common/LLMSelector";
 import StreamOutput from "@/components/common/StreamOutput";
 import CollapsibleSummary from "./CollapsibleSummary";
@@ -99,6 +100,8 @@ function stageStatusLabel(state: "pending" | "active" | "completed" | "failed"):
 }
 
 export default function PipelineTab(props: PipelineTabProps) {
+  const { user } = useAuth();
+  const canConfigureModel = user?.role === "admin";
   const {
     worldInjectionSummary,
     hasCharacters,
@@ -259,18 +262,20 @@ export default function PipelineTab(props: PipelineTabProps) {
       <details className="group rounded-2xl border border-border/70 bg-background/95 p-4">
         <summary className="cursor-pointer list-none">
           <CollapsibleSummary
-            title="流水线配置、运行与模型设置"
-            description="批量任务、模型和高级参数都收在这里。默认先处理当前问题章节，只有需要批量推进时再展开。"
+            title={canConfigureModel ? "流水线配置、运行与模型设置" : "流水线配置与运行参数"}
+            description={canConfigureModel
+              ? "批量任务、模型和高级参数都收在这里。默认先处理当前问题章节，只有需要批量推进时再展开。"
+              : "批量任务和高级参数都收在这里。默认先处理当前问题章节，只有需要批量推进时再展开。"}
           />
         </summary>
 
         <div className="mt-4 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>模型与配置</CardTitle>
+              <CardTitle>{canConfigureModel ? "模型与配置" : "流水线配置"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <LLMSelector />
+              {canConfigureModel ? <LLMSelector /> : null}
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="space-y-1">
                   <div className="text-xs font-medium text-muted-foreground">起始章节</div>

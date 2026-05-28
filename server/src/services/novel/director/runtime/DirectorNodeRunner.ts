@@ -3,7 +3,9 @@ import type {
   DirectorRuntimeSnapshot,
   DirectorStepRun,
 } from "@ai-novel/shared/types/directorRuntime";
-import { runWithLlmUsageTracking } from "../../../../llm/usageTracking";
+import { prisma } from "../../../../db/prisma";
+import { runWithLlmUsageTracking, type LlmUsageTrackingContext } from "../../../../llm/usageTracking";
+import { newApiService } from "../../../auth/NewApiService";
 import { DirectorPolicyEngine, type DirectorPolicyRequest } from "./DirectorPolicyEngine";
 import { DirectorRuntimeStore } from "./DirectorRuntimeStore";
 
@@ -14,6 +16,56 @@ function buildNodeIdempotencyKey(input: {
   targetId?: string | null;
 }): string {
   return `${input.taskId}:${input.nodeKey}:${input.targetType ?? "global"}:${input.targetId ?? "global"}`;
+}
+
+async function buildNodeUsageContext(input: {
+  taskId: string;
+  novelId?: string | null;
+  runId?: string | null;
+  idempotencyKey?: string | null;
+  nodeKey: string;
+}): Promise<LlmUsageTrackingContext> {
+  const task = await prisma.novelWorkflowTask.findUnique({
+    where: { id: input.taskId },
+    select: {
+      seedPayloadJson: true,
+      novel: {
+        select: { ownerUserId: true },
+      },
+    },
+  }).catch(() => null);
+
+  let seedUserId: string | null = null;
+  try {
+    const parsed = task?.seedPayloadJson ? JSON.parse(task.seedPayloadJson) as { createdByUserId?: unknown } : null;
+    seedUserId = typeof parsed?.createdByUserId === "string" && parsed.createdByUserId.trim()
+      ? parsed.createdByUserId.trim()
+      : null;
+  } catch {
+    seedUserId = null;
+  }
+
+  const userId = seedUserId ?? task?.novel?.ownerUserId ?? null;
+  const user = userId
+    ? await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, apiToken: true },
+    }).catch(() => null)
+    : null;
+  const userApiToken = user?.apiToken?.trim()
+    || (user?.email ? (await newApiService.createToken(user.email).catch(() => null))?.key ?? null : null);
+
+  return {
+    workflowTaskId: input.taskId,
+    directorTelemetry: true,
+    novelId: input.novelId ?? null,
+    directorRunId: input.runId ?? input.taskId,
+    directorStepIdempotencyKey: input.idempotencyKey ?? null,
+    directorNodeKey: input.nodeKey,
+    userId,
+    userEmail: user?.email ?? null,
+    userApiToken,
+  };
 }
 
 export interface DirectorNodeContract<TInput, TOutput> {
@@ -131,14 +183,13 @@ export class DirectorNodeRunner {
 
     try {
       const output = input.taskId?.trim()
-        ? await runWithLlmUsageTracking({
-          workflowTaskId: input.taskId.trim(),
-          directorTelemetry: true,
+        ? await runWithLlmUsageTracking(await buildNodeUsageContext({
+          taskId: input.taskId.trim(),
           novelId: input.novelId,
-          directorRunId: snapshot?.runId ?? input.taskId.trim(),
-          directorStepIdempotencyKey: idempotencyKey,
-          directorNodeKey: contract.nodeKey,
-        }, () => contract.run(input.input))
+          runId: snapshot?.runId ?? input.taskId.trim(),
+          idempotencyKey,
+          nodeKey: contract.nodeKey,
+        }), () => contract.run(input.input))
         : await contract.run(input.input);
       const producedArtifacts = collectArtifacts?.(output) ?? [];
       let runtimeSnapshot: DirectorRuntimeSnapshot | null = null;

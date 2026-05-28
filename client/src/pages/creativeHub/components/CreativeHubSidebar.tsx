@@ -8,6 +8,7 @@ import type {
   CreativeHubThread,
   CreativeHubTurnSummary,
 } from "@ai-novel/shared/types/creativeHub";
+import { useAuth } from "@/components/layout/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -219,6 +220,8 @@ export default function CreativeHubSidebar({
   onCreateNovel,
   onStartProduction,
 }: CreativeHubSidebarProps) {
+  const { user } = useAuth();
+  const canInspectModel = user?.role === "admin";
   const [novelTitleDraft, setNovelTitleDraft] = useState("");
   const currentNovelTitle = novels.find((item) => item.id === bindings.novelId)?.title ?? null;
   const blocker = useMemo(
@@ -492,6 +495,7 @@ export default function CreativeHubSidebar({
               <DebugRow label="当前 Checkpoint" value={currentCheckpointId ?? "-"} />
             </div>
 
+            {canInspectModel ? (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
               <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">模型路由</div>
               <DebugRow label="Provider" value={modelSummary.provider} />
@@ -499,6 +503,7 @@ export default function CreativeHubSidebar({
               <DebugRow label="Temperature" value={String(modelSummary.temperature)} />
               <DebugRow label="Max tokens" value={modelSummary.maxTokens != null ? String(modelSummary.maxTokens) : "默认"} />
             </div>
+            ) : null}
 
             {latestTurnSummary ? (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">

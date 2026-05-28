@@ -9,11 +9,13 @@ import {
 } from "@ai-novel/shared/types/novelDirector";
 import type { UnifiedTaskDetail } from "@ai-novel/shared/types/task";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import {
   getDirectorTaskSnapshot,
 } from "@/api/novelDirector";
 import { queryKeys } from "@/api/queryKeys";
 import DirectorRuntimeProjectionCard from "@/components/autoDirector/DirectorRuntimeProjectionCard";
+import { useAuth } from "@/components/layout/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import AITakeoverContainer, { type AITakeoverMode } from "@/components/workflow/AITakeoverContainer";
@@ -298,6 +300,9 @@ export default function NovelAutoDirectorProgressPanel({
   isConfirmingAndContinuing = false,
   onOpenTaskCenter,
 }: NovelAutoDirectorProgressPanelProps) {
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const canSeeUsageDebug = user?.role === "admin" && searchParams.get("debugUsage") === "1";
   const taskChapterTitleWarning = resolveChapterTitleWarning(task);
   const chapterTitleRepairMutation = useDirectorChapterTitleRepair();
   const runtimeTaskId = task?.id ?? taskId;
@@ -521,18 +526,31 @@ export default function NovelAutoDirectorProgressPanel({
               <div className="text-xs text-muted-foreground">累计调用</div>
               <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.llmCallCount)}</div>
             </div>
+            {canSeeUsageDebug ? (
+              <>
+                <div className="rounded-xl border bg-background/80 p-3">
+                  <div className="text-xs text-muted-foreground">输入 Tokens</div>
+                  <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.promptTokens)}</div>
+                </div>
+                <div className="rounded-xl border bg-background/80 p-3">
+                  <div className="text-xs text-muted-foreground">输出 Tokens</div>
+                  <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.completionTokens)}</div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border bg-background/80 p-3 md:col-span-2">
+                <div className="text-xs text-muted-foreground">灵感值</div>
+                <div className="mt-1 text-sm font-medium text-foreground">消耗会在个人中心同步</div>
+              </div>
+            )}
             <div className="rounded-xl border bg-background/80 p-3">
-              <div className="text-xs text-muted-foreground">输入 Tokens</div>
-              <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.promptTokens)}</div>
-            </div>
-            <div className="rounded-xl border bg-background/80 p-3">
-              <div className="text-xs text-muted-foreground">输出 Tokens</div>
-              <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.completionTokens)}</div>
-            </div>
-            <div className="rounded-xl border bg-background/80 p-3">
-              <div className="text-xs text-muted-foreground">累计总 Tokens</div>
-              <div className="mt-1 text-sm font-medium text-foreground">{formatTokenCount(tokenUsage.totalTokens)}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground">最近记录：{formatDate(tokenUsage.lastRecordedAt)}</div>
+              <div className="text-xs text-muted-foreground">{canSeeUsageDebug ? "累计总 Tokens" : "最近记录"}</div>
+              <div className="mt-1 text-sm font-medium text-foreground">
+                {canSeeUsageDebug ? formatTokenCount(tokenUsage.totalTokens) : formatDate(tokenUsage.lastRecordedAt)}
+              </div>
+              {canSeeUsageDebug ? (
+                <div className="mt-1 text-[11px] text-muted-foreground">最近记录：{formatDate(tokenUsage.lastRecordedAt)}</div>
+              ) : null}
             </div>
           </div>
         ) : null}

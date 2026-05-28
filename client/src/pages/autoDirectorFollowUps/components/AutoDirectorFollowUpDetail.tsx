@@ -67,7 +67,6 @@ export function AutoDirectorFollowUpDetailPanel({
               <div>阻塞原因：{detail.blockingReason ?? "暂无"}</div>
               <div>下一步建议：{detail.nextStepSuggestion ?? "查看任务详情后再继续。"}</div>
               <div>检查点摘要：{detail.checkpointSummary ?? "暂无"}</div>
-              <div>当前模型：{detail.currentModel ?? "暂无"}</div>
               <div>来源页：{detail.originDetailUrl}</div>
             </div>
 

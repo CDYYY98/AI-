@@ -7,7 +7,9 @@ import helmet from "helmet";
 import morgan from "morgan";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
 import { ensureRuntimeDatabaseReady } from "./db/runtimeMigrations";
+import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
+import { quotaCheckMiddleware } from "./middleware/quotaCheck";
 import { loadProviderApiKeys } from "./llm/factory";
 import astrologyRouter from "./routes/astrology";
 import agentCatalogRouter from "./routes/agentCatalog";
@@ -111,6 +113,9 @@ export function createApp() {
     return `${method} ${url} ${status} ${responseTime} ms - ${contentLength}${errorSuffix}`;
   }));
   app.use(express.json({ limit: jsonBodyLimit }));
+
+  app.use(authMiddleware);
+  app.use(quotaCheckMiddleware);
 
   app.use("/api/health", healthRouter);
 app.use("/api/auth", authRouter);

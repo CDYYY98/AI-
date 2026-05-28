@@ -3,6 +3,7 @@ import type { LLMProvider } from "@ai-novel/shared/types/llm";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAPIKeySettings, saveLLMSelectionSetting } from "@/api/settings";
 import { queryKeys } from "@/api/queryKeys";
+import { useAuth } from "@/components/layout/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,7 +44,17 @@ function clampMaxTokens(value: number): number {
   return Math.min(32768, Math.max(256, Math.floor(value)));
 }
 
-export default function LLMSelector({
+export default function LLMSelector(props: LLMSelectorProps) {
+  const { user } = useAuth();
+
+  if (user?.role !== "admin") {
+    return null;
+  }
+
+  return <AdminLLMSelector {...props} />;
+}
+
+function AdminLLMSelector({
   value,
   onChange,
   showModel = true,

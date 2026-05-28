@@ -48,8 +48,8 @@ interface LLMStoreState {
 }
 
 export const useLLMStore = create<LLMStoreState>()((set) => ({
-  provider: "" as LLMProvider,
-  model: "",
+  provider: "deepseek" as LLMProvider,
+  model: "deepseek-chat",
   temperature: 0.7,
   hasHydratedSelection: false,
   setSelection: (selection) =>

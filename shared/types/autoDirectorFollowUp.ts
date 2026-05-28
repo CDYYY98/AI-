@@ -19,6 +19,7 @@ export const AUTO_DIRECTOR_FOLLOW_UP_REASONS = [
   "auto_approval_completed",
   "runtime_replaced",
   "validation_required",
+  "manual_approval_required",
 ] as const;
 
 export type AutoDirectorFollowUpReason = (typeof AUTO_DIRECTOR_FOLLOW_UP_REASONS)[number];
@@ -103,7 +104,7 @@ export interface AutoDirectorFollowUpItem {
   novelId: string | null;
   novelTitle: string;
   taskTitle: string;
-  lane: "auto_director";
+  lane: "auto_director" | "manual_create";
   status: TaskStatus;
   currentStage: string | null;
   checkpointType: NovelWorkflowCheckpoint | null;

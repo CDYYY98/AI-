@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { ChatOpenAI } from "@langchain/openai";
 import { prisma } from "../db/prisma";
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
+import { newApiService } from "../services/auth/NewApiService";
 
 export interface LlmTokenUsageSnapshot {
   promptTokens: number;
@@ -18,6 +19,9 @@ export interface LlmUsageTrackingContext {
   directorRunId?: string | null;
   directorStepIdempotencyKey?: string | null;
   directorNodeKey?: string | null;
+  userId?: string | null;
+  userEmail?: string | null;
+  userApiToken?: string | null;
 }
 
 export interface LlmUsageTrackingMeta {
@@ -71,9 +75,12 @@ function normalizeSnapshot(input: {
   const completionTokens = toPositiveInteger(input.completionTokens) ?? 0;
   const totalTokens = toPositiveInteger(input.totalTokens)
     ?? Math.max(promptTokens + completionTokens, 0);
-  if (promptTokens <= 0 && completionTokens <= 0 && totalTokens <= 0) {
+
+  // 只要有任何Token使用就应该记录，包括只有输入Token或只有输出Token的情况
+  if (totalTokens <= 0) {
     return null;
   }
+
   return {
     promptTokens,
     completionTokens,
@@ -177,6 +184,14 @@ function mergeBooleanValue(current: boolean | null | undefined, next: boolean | 
   return current === true;
 }
 
+export function setUsageTrackingUser(userId: string, userEmail: string, userApiToken?: string | null): void {
+  usageTrackingStore.enterWith({ userId, userEmail, userApiToken });
+}
+
+export function getCurrentLlmUsageTrackingContext(): LlmUsageTrackingContext | undefined {
+  return usageTrackingStore.getStore();
+}
+
 export function runWithLlmUsageTracking<T>(
   context: LlmUsageTrackingContext,
   runner: () => Promise<T>,
@@ -195,6 +210,9 @@ export function runWithLlmUsageTracking<T>(
         context.directorStepIdempotencyKey,
       ),
       directorNodeKey: mergeContextValue(current?.directorNodeKey, context.directorNodeKey),
+      userId: mergeContextValue(current?.userId, context.userId),
+      userEmail: mergeContextValue(current?.userEmail, context.userEmail),
+      userApiToken: mergeContextValue(current?.userApiToken, context.userApiToken),
     },
     runner,
   );
@@ -273,17 +291,55 @@ async function recordDirectorLlmUsage(input: {
   }).catch(() => undefined);
 }
 
+// 自动扣费：每 1K token 扣 $0.002
+function deductQuota(context: LlmUsageTrackingContext, usage: LlmTokenUsageSnapshot, meta?: LlmUsageTrackingMeta): void {
+  if (!context.userEmail || context.userApiToken) return;
+
+  // 添加调试日志
+  console.log(`[Token Usage Debug] User: ${context.userEmail}, Model: ${meta?.model ?? 'unknown'}, ` +
+    `Prompt: ${usage.promptTokens}, Completion: ${usage.completionTokens}, Total: ${usage.totalTokens}`);
+
+  // 检查是否有异常的Token使用情况
+  if (usage.promptTokens === 0 && usage.completionTokens > 0) {
+    console.warn(`[Token Usage Warning] Input tokens is 0 but completion tokens is ${usage.completionTokens} for user ${context.userEmail}`);
+  }
+
+  const amount = -Math.max(0.0001, (usage.totalTokens / 1000) * 0.002);
+  prisma.user.updateMany({
+    where: {
+      email: context.userEmail,
+      apiQuota: {
+        gt: 0,
+      },
+    },
+    data: {
+      apiQuota: {
+        decrement: Math.abs(amount),
+      },
+    },
+  }).catch(() => {});
+  newApiService.updateQuota(context.userEmail, amount).catch(() => {});
+  newApiService.logUsage({
+    email: context.userEmail,
+    modelName: meta?.model ?? undefined,
+    promptTokens: usage.promptTokens,
+    completionTokens: usage.completionTokens,
+  }).catch(() => {});
+}
+
 export async function recordTrackedLlmUsage(
   usage: LlmTokenUsageSnapshot | null,
   record?: TrackedUsageRecordInput,
 ): Promise<void> {
-  if (!usage) {
-    return;
-  }
+  if (!usage) return;
   const context = usageTrackingStore.getStore();
-  if (!context) {
-    return;
+  if (!context) return;
+
+  // 自动扣费
+  if (context.userEmail && usage.totalTokens > 0) {
+    deductQuota(context, usage, record?.meta);
   }
+
   if (!context?.workflowTaskId && !context?.generationJobId) {
     if (!context?.styleExtractionTaskId && context?.directorTelemetry !== true) {
       return;

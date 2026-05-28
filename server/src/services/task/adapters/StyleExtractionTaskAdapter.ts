@@ -31,6 +31,7 @@ export class StyleExtractionTaskAdapter {
     status?: TaskStatus;
     keyword?: string;
     take: number;
+    userId?: string;
   }): Promise<UnifiedTaskSummary[]> {
     if (input.status === "waiting_approval") {
       return [];
@@ -50,6 +51,8 @@ export class StyleExtractionTaskAdapter {
               ],
             }
           : {}),
+        // 如果指定了用户ID，只返回该用户的风格提取任务
+        ...(input.userId ? { userId: input.userId } : {}),
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: input.take,
