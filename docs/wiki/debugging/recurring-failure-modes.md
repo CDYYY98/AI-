@@ -15,6 +15,7 @@
 - Prompt 输出问题先查 PromptAsset、schema、repair、semantic retry 和 provider capability。
 - 章节产出慢先查热路径是否重新串入多次 LLM 后处理。
 - RAG 不命中先查显式文档、绑定文档、全局启用文档和 context resolver。
+- 经 NewAPI 转发模型时，先确认上游通道是否接受 `system` / `developer` 角色，再判断是不是业务 Prompt 问题。
 - 数据破坏风险操作必须先备份、验证备份，再取得明确批准。
 
 ## 示例
@@ -26,6 +27,25 @@
 - 章节正文为空还继续推进：检查 writer 空返回防线、单章自动重试和失败落态。
 - 重新生成候选没有进入新一轮：检查 batch reuse、command idempotency 和候选阶段运行态。
 - 生成没有使用知识库资料：检查 `knowledgeDocumentIds`、小说/世界绑定、启用状态和 prompt context requirement。
+- NewAPI 返回 `messages[0].role: unknown variant developer`：先用同一模型分别测试 `system + user` 和纯 `user` 消息。部分 OpenInference 类上游会在转发时把 `system` 转为 `developer`，导致上游拒绝请求；这种路径应在 NewAPI 用户令牌调用前把 `system` / `developer` 统一降级为 `user`，而不是改业务 Prompt。
+
+## NewAPI 角色兼容
+
+### 背景
+
+用户账户令牌路径会通过 NewAPI 统计额度和灵感值。某些上游通道虽然暴露 OpenAI 兼容接口，但不接受 `developer` 角色；同时 NewAPI 或上游适配层可能把 `system` 消息转换为 `developer` 后再转发，最终表现为请求体反序列化失败，而不是模型内容生成失败。
+
+### 当前规则
+
+- 仅 NewAPI 用户令牌调用路径需要把 `system` / `developer` 角色降级为 `user`，确保调用和 NewAPI 计费链路一致。
+- 其他非 OpenAI 兼容通道仍按原规则把 `developer` 降级为 `system`，避免扩大兼容补丁的影响面。
+- 失败请求不应当被当成真实消耗；排查时要同时确认模型返回、NewAPI 用量和本地灵感值扣减。
+
+### 验证方式
+
+- 先直接测试 NewAPI 的纯 `user` 请求是否成功，再测试包含 `system` 的请求是否触发 `developer` 报错。
+- 服务修复后，用新注册账号完成验证码、登录、生成 API Key、一次模型调用和调用后的灵感值变化核对。
+- 若页面仍提示本地连接异常，先区分前端连接问题和服务端 API 调用问题，避免把浏览器环境故障误判为模型链路故障。
 
 ## 失败模式
 

@@ -91,6 +91,8 @@ export interface ResolvedLLMClientOptions {
 
 const providerSecrets = new Map<LLMProvider, ProviderSecret>();
 const RESOLVED_LLM_OPTIONS = Symbol("RESOLVED_LLM_OPTIONS");
+const DEVELOPER_ROLE_FETCH_PATCHED = Symbol.for("ai-novel.developer-role-fetch-patched");
+type RoleCompatibilityMode = "developer_to_system" | "newapi_system_to_user";
 
 type ChatOpenAIWithResolvedOptions = ChatOpenAI & {
   [RESOLVED_LLM_OPTIONS]?: ResolvedLLMClientOptions;
@@ -126,18 +128,36 @@ function shouldNormalizeDeveloperRole(baseURL: string): boolean {
   }
 }
 
-function normalizeDeveloperRolePayload(body: unknown): unknown {
+function isNewApiFetchUrl(value: string): boolean {
+  try {
+    const requestUrl = new URL(value);
+    const newApiUrl = new URL(normalizeNewApiBaseUrl(process.env.NEW_API_URL));
+    return requestUrl.origin === newApiUrl.origin && requestUrl.pathname.startsWith(newApiUrl.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function resolveRoleCompatibilityMode(input: Parameters<typeof fetch>[0], fallbackBaseURL?: string): RoleCompatibilityMode {
+  const url = extractFetchUrl(input) ?? fallbackBaseURL;
+  return url && isNewApiFetchUrl(url) ? "newapi_system_to_user" : "developer_to_system";
+}
+
+function normalizeDeveloperRolePayload(body: unknown, mode: RoleCompatibilityMode): unknown {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return body;
   }
 
   const payload = body as { messages?: Array<Record<string, unknown>>; input?: unknown };
   const normalizedMessages = Array.isArray(payload.messages)
-    ? payload.messages.map((message) => (
-      message?.role === "developer"
+    ? payload.messages.map((message) => {
+      if (mode === "newapi_system_to_user" && (message?.role === "developer" || message?.role === "system")) {
+        return { ...message, role: "user" };
+      }
+      return message?.role === "developer"
         ? { ...message, role: "system" }
-        : message
-    ))
+        : message;
+    })
     : undefined;
 
   if (!normalizedMessages) {
@@ -150,25 +170,103 @@ function normalizeDeveloperRolePayload(body: unknown): unknown {
   };
 }
 
+function extractFetchUrl(input: Parameters<typeof fetch>[0]): string | null {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.toString();
+  }
+  if (typeof Request !== "undefined" && input instanceof Request) {
+    return input.url;
+  }
+  return null;
+}
+
+function shouldNormalizeDeveloperRoleForFetch(input: Parameters<typeof fetch>[0], fallbackBaseURL?: string): boolean {
+  const url = extractFetchUrl(input);
+  if (url) {
+    return shouldNormalizeDeveloperRole(url);
+  }
+  return fallbackBaseURL ? shouldNormalizeDeveloperRole(fallbackBaseURL) : true;
+}
+
+function normalizeDeveloperRoleJsonBody(body: string, mode: RoleCompatibilityMode): string | null {
+  if (mode === "developer_to_system" && !body.includes('"developer"')) {
+    return null;
+  }
+  if (mode === "newapi_system_to_user" && !body.includes('"developer"') && !body.includes('"system"')) {
+    return null;
+  }
+  try {
+    return JSON.stringify(normalizeDeveloperRolePayload(JSON.parse(body), mode));
+  } catch {
+    return null;
+  }
+}
+
+async function normalizeDeveloperRoleFetchArgs(
+  input: Parameters<typeof fetch>[0],
+  init: Parameters<typeof fetch>[1],
+  fallbackBaseURL?: string,
+): Promise<Parameters<typeof fetch>> {
+  if (!shouldNormalizeDeveloperRoleForFetch(input, fallbackBaseURL)) {
+    return [input, init];
+  }
+  const mode = resolveRoleCompatibilityMode(input, fallbackBaseURL);
+
+  if (typeof init?.body === "string") {
+    const normalizedBody = normalizeDeveloperRoleJsonBody(init.body, mode);
+    if (normalizedBody) {
+      return [input, { ...init, body: normalizedBody }];
+    }
+    return [input, init];
+  }
+
+  if (typeof Request !== "undefined" && input instanceof Request && input.body) {
+    const body = await input.clone().text().catch(() => "");
+    const normalizedBody = normalizeDeveloperRoleJsonBody(body, mode);
+    if (normalizedBody) {
+      return [new Request(input, { body: normalizedBody }), init];
+    }
+  }
+
+  return [input, init];
+}
+
 function createDeveloperRoleCompatibilityFetch(baseURL: string): typeof fetch | undefined {
   if (!shouldNormalizeDeveloperRole(baseURL) || typeof fetch !== "function") {
     return undefined;
   }
 
   return async (input, init) => {
-    const body = init?.body;
-    if (typeof body !== "string" || !body.includes('"developer"')) {
-      return fetch(input, init);
-    }
-
-    try {
-      const normalizedBody = JSON.stringify(normalizeDeveloperRolePayload(JSON.parse(body)));
-      return fetch(input, { ...init, body: normalizedBody });
-    } catch {
-      return fetch(input, init);
-    }
+    return fetch(...await normalizeDeveloperRoleFetchArgs(input, init, baseURL));
   };
 }
+
+function installDeveloperRoleCompatibilityFetch(): void {
+  if (typeof globalThis.fetch !== "function") {
+    return;
+  }
+  const globalRecord = globalThis as typeof globalThis & {
+    [DEVELOPER_ROLE_FETCH_PATCHED]?: boolean;
+  };
+  if (globalRecord[DEVELOPER_ROLE_FETCH_PATCHED]) {
+    return;
+  }
+  const originalFetch = globalThis.fetch.bind(globalThis);
+  globalThis.fetch = (async (input, init) => {
+    return originalFetch(...await normalizeDeveloperRoleFetchArgs(input, init));
+  }) as typeof fetch;
+  Object.defineProperty(globalRecord, DEVELOPER_ROLE_FETCH_PATCHED, {
+    value: true,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+}
+
+installDeveloperRoleCompatibilityFetch();
 
 async function resolveUsageApiToken(): Promise<string | undefined> {
   const usageContext = getCurrentLlmUsageTrackingContext();
