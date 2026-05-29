@@ -51,7 +51,7 @@ export default function ProfilePage() {
   const accountPlan = resolveAccountPlanByTier(info?.accountTier ?? user?.accountTier ?? "trial");
   const trimmedRechargeCode = rechargeCode.trim();
   const openPurchasePage = () => {
-    window.location.assign(RECHARGE_PURCHASE_URL);
+    window.open(RECHARGE_PURCHASE_URL, "_blank", "noopener,noreferrer");
   };
 
   return (
