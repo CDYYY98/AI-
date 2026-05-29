@@ -16,7 +16,7 @@ import {
   resolveAccountPlanByTier,
 } from "@/lib/inspiration";
 
-const RECHARGE_PURCHASE_URL = "https://tinyurl.com/23slcc8v";
+const RECHARGE_PURCHASE_URL = "http://118.190.162.251:8080/";
 
 export default function ProfilePage() {
   const { user } = useAuth();
