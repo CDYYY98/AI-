@@ -50,6 +50,9 @@ export default function ProfilePage() {
   const usedInspiration = quotaToInspiration(usedQuota);
   const accountPlan = resolveAccountPlanByTier(info?.accountTier ?? user?.accountTier ?? "trial");
   const trimmedRechargeCode = rechargeCode.trim();
+  const openPurchasePage = () => {
+    window.location.assign(RECHARGE_PURCHASE_URL);
+  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-6">
@@ -103,11 +106,14 @@ export default function ProfilePage() {
         <CardContent className="space-y-3">
           <div className="flex flex-col gap-2 rounded-md border border-emerald-200 bg-white/70 p-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-sm text-emerald-900">打开购买页面，付款后复制卡密并回到这里兑换。</span>
-            <Button asChild type="button" variant="outline" className="border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-100">
-              <a href={RECHARGE_PURCHASE_URL} target="_blank" rel="noreferrer">
-                <ExternalLink className="h-4 w-4" />
-                购买卡密
-              </a>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-100"
+              onClick={openPurchasePage}
+            >
+              <ExternalLink className="h-4 w-4" />
+              购买卡密
             </Button>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
