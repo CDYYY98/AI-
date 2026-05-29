@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ExternalLink } from "lucide-react";
 import { getQuota } from "@/api/auth";
 import { redeemRechargeCode } from "@/api/rechargeCodes";
 import { useAuth } from "@/components/layout/AuthContext";
@@ -14,6 +15,8 @@ import {
   RECHARGE_PACKAGES,
   resolveAccountPlanByTier,
 } from "@/lib/inspiration";
+
+const RECHARGE_PURCHASE_URL = "https://tinyurl.com/23slcc8v";
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -98,6 +101,15 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex flex-col gap-2 rounded-md border border-emerald-200 bg-white/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm text-emerald-900">打开购买页面，付款后复制卡密并回到这里兑换。</span>
+            <Button asChild type="button" variant="outline" className="border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-100">
+              <a href={RECHARGE_PURCHASE_URL} target="_blank" rel="noreferrer">
+                <ExternalLink className="h-4 w-4" />
+                购买卡密
+              </a>
+            </Button>
+          </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               className="font-mono"
