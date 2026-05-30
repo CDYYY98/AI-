@@ -36,3 +36,5 @@
 如果打包日志出现 `deploy.json written (no remote API configured)`，该安装包只能作为本地离线测试包，不能发给正式用户。正式安装包应使用 `pnpm run dist:desktop:nsis:official` 生成；如正式服务器地址变化，可在打包环境中显式设置 `AI_NOVEL_API_BASE_URL` 覆盖默认值。
 
 更新清单里的 `path` / `url` 必须和实际上传到 GitHub Release 的安装包文件名一致。Windows 打包层和 NSIS 目标层都应使用同一套稳定英文 `artifactName`，staged 桌面包名也应保持无作用域英文包名；否则客户端可能能发现新版本，但下载时找不到对应安装包。
+
+下载完成后应弹出原生确认框，让用户明确选择“现在安装”或“稍后”。页面上的“重启安装”按钮作为备用入口保留，但不应要求用户理解下载完成后还要主动寻找下一步。

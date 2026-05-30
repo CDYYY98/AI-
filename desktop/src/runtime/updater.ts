@@ -10,11 +10,16 @@ export interface DesktopUpdaterController {
   scheduleInitialCheck: (delayMs?: number) => void;
 }
 
+export interface DesktopUpdateDownloadedInfo {
+  version: string;
+}
+
 interface DesktopUpdaterOptions {
   currentVersion: string;
   updateChannel: string;
   isPackaged: boolean;
   isPortable: boolean;
+  onUpdateDownloaded?: (info: DesktopUpdateDownloadedInfo) => void | Promise<void>;
 }
 
 function markUpdaterSnapshot(snapshot: ReturnType<typeof createUpdaterSnapshot>): void {
@@ -150,6 +155,8 @@ export function initializeDesktopUpdater(options: DesktopUpdaterOptions): Deskto
       bytesPerSecond: null,
       lastCheckedAt: new Date().toISOString(),
     }));
+    Promise.resolve(options.onUpdateDownloaded?.({ version: info.version }))
+      .catch((error) => logDesktopError("desktop.updater.installPrompt", error));
   });
 
   autoUpdater.on("error", (error) => {

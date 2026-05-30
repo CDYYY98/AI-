@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
+import type { MessageBoxOptions } from "electron";
 import {
   createDatabaseImportRelaunchArgs,
   createSanitizedRelaunchArgs,
@@ -43,6 +44,7 @@ let serverHealthy = false;
 let mainWindowShown = false;
 let bootstrapFailed = false;
 let initialUpdateCheckScheduled = false;
+let updateInstallPromptOpen = false;
 
 function relaunchApp(extraArgs?: string[]): void {
   app.relaunch({ args: extraArgs ?? createSanitizedRelaunchArgs() });
@@ -92,6 +94,32 @@ function initializeDesktopUpdaterController(): void {
     updateChannel: resolveDesktopUpdateChannel(),
     isPackaged: app.isPackaged,
     isPortable: isPortableDesktopRuntime(),
+    async onUpdateDownloaded(info) {
+      if (updateInstallPromptOpen) {
+        return;
+      }
+      updateInstallPromptOpen = true;
+      try {
+        const messageBoxOptions: MessageBoxOptions = {
+          type: "info",
+          title: "安装新版",
+          message: `新版本 ${info.version} 已下载完成`,
+          detail: "现在安装会关闭应用并完成更新；也可以稍后在个人中心点击“重启安装”。",
+          buttons: ["现在安装", "稍后"],
+          defaultId: 0,
+          cancelId: 1,
+          noLink: true,
+        };
+        const result = mainWindow && !mainWindow.isDestroyed()
+          ? await dialog.showMessageBox(mainWindow, messageBoxOptions)
+          : await dialog.showMessageBox(messageBoxOptions);
+        if (result.response === 0) {
+          updaterController?.quitAndInstall();
+        }
+      } finally {
+        updateInstallPromptOpen = false;
+      }
+    },
   });
 }
 
