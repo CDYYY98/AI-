@@ -14,21 +14,21 @@ import { checkForDesktopUpdates, quitAndInstallDesktopUpdate, useDesktopUpdater 
 function formatUpdaterStatus(status: string): string {
   switch (status) {
     case "disabled":
-      return "Disabled";
+      return "不可用";
     case "idle":
-      return "Idle";
+      return "待检查";
     case "checking":
-      return "Checking";
+      return "检查中";
     case "update-available":
-      return "Update available";
+      return "发现新版本";
     case "downloading":
-      return "Downloading";
+      return "下载中";
     case "downloaded":
-      return "Ready to install";
+      return "可重启安装";
     case "not-available":
-      return "Up to date";
+      return "已是最新版";
     case "error":
-      return "Update error";
+      return "检查失败";
     default:
       return status;
   }
@@ -42,7 +42,7 @@ export default function DesktopUpdateCard() {
     return null;
   }
 
-  const installModeLabel = APP_RUNTIME_IS_PORTABLE ? "Portable" : "Installed build";
+  const installModeLabel = APP_RUNTIME_IS_PORTABLE ? "便携版" : "安装版";
   const showDownloadButton = updater.status === "update-available";
   const showInstallButton = updater.status === "downloaded";
   const showCheckButton = updater.status !== "downloading" && !showInstallButton;
@@ -51,38 +51,37 @@ export default function DesktopUpdateCard() {
     <Card className="border-slate-300/80 bg-slate-50/80">
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
-          <CardTitle>Desktop Beta Channel</CardTitle>
+          <CardTitle>桌面版本更新</CardTitle>
           <Badge variant="outline">{installModeLabel}</Badge>
-          <Badge variant="outline">Channel {APP_UPDATE_CHANNEL}</Badge>
+          <Badge variant="outline">更新通道 {APP_UPDATE_CHANNEL}</Badge>
         </div>
         <CardDescription>
-          Current binary version {APP_VERSION}. Installed NSIS builds can check GitHub Releases in the background and
-          install updates after confirmation.
+          安装版可以检查并下载新版本，下载完成后重启应用即可安装。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 md:grid-cols-3">
           <div className="rounded-md border bg-background p-3">
-            <div className="text-xs text-muted-foreground">Current version</div>
+            <div className="text-xs text-muted-foreground">当前版本</div>
             <div className="mt-1 font-medium">{APP_VERSION}</div>
           </div>
           <div className="rounded-md border bg-background p-3">
-            <div className="text-xs text-muted-foreground">Update status</div>
+            <div className="text-xs text-muted-foreground">更新状态</div>
             <div className="mt-1 font-medium">{formatUpdaterStatus(updater.status)}</div>
           </div>
           <div className="rounded-md border bg-background p-3">
-            <div className="text-xs text-muted-foreground">Available version</div>
+            <div className="text-xs text-muted-foreground">可用版本</div>
             <div className="mt-1 font-medium">{updater.availableVersion ?? "-"}</div>
           </div>
         </div>
 
         <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">
           {APP_RUNTIME_IS_PORTABLE
-            ? "Portable builds stay on manual replacement and never enter the auto-update chain."
+            ? "便携版需要下载新版安装包后手动替换。"
             : !APP_RUNTIME_IS_PACKAGED
-              ? "Development desktop runs expose the updater UI but do not download release assets."
+              ? "开发运行用于检查界面，打包安装版会连接更新通道。"
               : updater.message}
-          {typeof updater.progressPercent === "number" ? ` Download progress: ${Math.round(updater.progressPercent)}%.` : ""}
+          {typeof updater.progressPercent === "number" ? ` 下载进度 ${Math.round(updater.progressPercent)}%。` : ""}
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -99,10 +98,10 @@ export default function DesktopUpdateCard() {
               disabled={isBusy || updater.status === "checking" || !updater.isSupported}
             >
               {showDownloadButton
-                ? "Download update"
+                ? "下载更新"
                 : updater.status === "checking"
-                  ? "Checking..."
-                  : "Check for updates"}
+                  ? "检查中..."
+                  : "检查更新"}
             </Button>
           ) : null}
           {showInstallButton ? (
@@ -117,7 +116,7 @@ export default function DesktopUpdateCard() {
               }}
               disabled={isBusy || !updater.canInstall}
             >
-              Restart and install
+              重启安装
             </Button>
           ) : null}
         </div>

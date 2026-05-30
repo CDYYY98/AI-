@@ -66,7 +66,7 @@ const DEFAULT_BOOTSTRAP_SNAPSHOT: DesktopBootstrapSnapshot = {
 
 const DEFAULT_UPDATER_SNAPSHOT: DesktopUpdaterSnapshot = {
   status: "disabled",
-  message: "Updates are not available in this runtime.",
+  message: "当前运行环境不可检查桌面更新。",
   currentVersion: "0.0.0",
   availableVersion: null,
   progressPercent: null,

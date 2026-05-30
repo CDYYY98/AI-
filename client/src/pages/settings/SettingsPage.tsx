@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DesktopUpdateCard from "@/components/layout/DesktopUpdateCard";
 import AutoDirectorSettingsSection from "./AutoDirectorSettingsSection";
 import SettingsNavigationCards from "./components/SettingsNavigationCards";
 import StyleEngineRuntimeSettingsCard from "./components/StyleEngineRuntimeSettingsCard";
@@ -10,6 +11,7 @@ export default function SettingsPage() {
 
   return (
     <div className={AUTO_DIRECTOR_MOBILE_CLASSES.settingsPageRoot}>
+      <DesktopUpdateCard />
       <SettingsNavigationCards />
       <StyleEngineRuntimeSettingsCard />
 

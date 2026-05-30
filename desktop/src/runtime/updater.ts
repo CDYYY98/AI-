@@ -41,18 +41,18 @@ export function initializeDesktopUpdater(options: DesktopUpdaterOptions): Deskto
   const supported = isUpdaterSupported(options);
   const hasFeedConfig = !supported || hasPackagedUpdateFeedConfig();
   const unsupportedReason = !options.isPackaged
-    ? "Updates are only available from the packaged Windows build."
+    ? "只有打包后的 Windows 安装版可以检查更新。"
     : options.isPortable
-      ? "Portable builds stay on manual updates and are excluded from auto-update."
+      ? "便携版需要下载新版安装包后手动替换。"
       : !hasFeedConfig
-        ? "This build does not include an update feed yet. Publish it through the beta release pipeline first."
-        : "Updates are disabled by environment configuration.";
+        ? "此安装包缺少更新配置，请通过正式发布流程重新打包。"
+        : "环境配置关闭了更新检查。";
 
   markUpdaterSnapshot(createUpdaterSnapshot({
     status: supported && hasFeedConfig ? "idle" : "disabled",
     message: supported
       ? hasFeedConfig
-        ? "Installed build is ready for background update checks."
+        ? "安装版可以检查发布通道里的新版本。"
         : unsupportedReason
       : unsupportedReason,
     currentVersion: options.currentVersion,
@@ -91,7 +91,7 @@ export function initializeDesktopUpdater(options: DesktopUpdaterOptions): Deskto
     markUpdaterSnapshot(createUpdaterSnapshot({
       ...desktopUpdaterStore.getSnapshot(),
       status: "checking",
-      message: "Checking GitHub Releases for a newer desktop build.",
+      message: "正在检查可用的新版本。",
       canInstall: false,
       lastCheckedAt: new Date().toISOString(),
       progressPercent: null,
@@ -104,7 +104,7 @@ export function initializeDesktopUpdater(options: DesktopUpdaterOptions): Deskto
     markUpdaterSnapshot(createUpdaterSnapshot({
       ...desktopUpdaterStore.getSnapshot(),
       status: "update-available",
-      message: `Version ${info.version} is available. Confirm download when you are ready.`,
+      message: `发现桌面版 ${info.version}，可以下载更新包。`,
       availableVersion: info.version,
       canInstall: false,
       progressPercent: null,
@@ -118,7 +118,7 @@ export function initializeDesktopUpdater(options: DesktopUpdaterOptions): Deskto
     markUpdaterSnapshot(createUpdaterSnapshot({
       ...desktopUpdaterStore.getSnapshot(),
       status: "not-available",
-      message: "You are already on the newest available desktop build for this channel.",
+      message: "当前安装版已经是发布通道中的最新版本。",
       availableVersion: null,
       canInstall: false,
       progressPercent: null,
@@ -131,7 +131,7 @@ export function initializeDesktopUpdater(options: DesktopUpdaterOptions): Deskto
     markUpdaterSnapshot(createUpdaterSnapshot({
       ...desktopUpdaterStore.getSnapshot(),
       status: "downloading",
-      message: `Downloading update${desktopUpdaterStore.getSnapshot().availableVersion ? ` ${desktopUpdaterStore.getSnapshot().availableVersion}` : ""}.`,
+      message: `正在下载更新包${desktopUpdaterStore.getSnapshot().availableVersion ? ` ${desktopUpdaterStore.getSnapshot().availableVersion}` : ""}。`,
       progressPercent: progress.percent,
       bytesPerSecond: progress.bytesPerSecond,
       canInstall: false,
@@ -143,7 +143,7 @@ export function initializeDesktopUpdater(options: DesktopUpdaterOptions): Deskto
     markUpdaterSnapshot(createUpdaterSnapshot({
       ...desktopUpdaterStore.getSnapshot(),
       status: "downloaded",
-      message: `Version ${info.version} has downloaded. Restart the app to install it.`,
+      message: `桌面版 ${info.version} 下载完成，重启应用后安装。`,
       availableVersion: info.version,
       canInstall: true,
       progressPercent: 100,
@@ -177,7 +177,7 @@ export function initializeDesktopUpdater(options: DesktopUpdaterOptions): Deskto
         markUpdaterSnapshot(createUpdaterSnapshot({
           ...snapshot,
           status: "downloading",
-          message: `Downloading update ${snapshot.availableVersion ?? ""}`.trim(),
+          message: `正在下载更新包 ${snapshot.availableVersion ?? ""}`.trim(),
           canInstall: false,
           progressPercent: 0,
           bytesPerSecond: null,
