@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { getQuota } from "@/api/auth";
 import { redeemRechargeCode } from "@/api/rechargeCodes";
 import { useAuth } from "@/components/layout/AuthContext";
+import DesktopUpdateCard from "@/components/layout/DesktopUpdateCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -149,6 +150,8 @@ export default function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      <DesktopUpdateCard showWebPlaceholder />
     </div>
   );
 }

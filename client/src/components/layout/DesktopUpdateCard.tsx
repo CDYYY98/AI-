@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,11 +35,31 @@ function formatUpdaterStatus(status: string): string {
   }
 }
 
-export default function DesktopUpdateCard() {
+interface DesktopUpdateCardProps {
+  showWebPlaceholder?: boolean;
+}
+
+export default function DesktopUpdateCard({ showWebPlaceholder = false }: DesktopUpdateCardProps) {
   const updater = useDesktopUpdater();
   const [isBusy, setIsBusy] = useState(false);
 
   if (APP_RUNTIME !== "desktop") {
+    if (showWebPlaceholder) {
+      return (
+        <Card className="border-slate-300/80 bg-slate-50/80">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-slate-700" />
+              软件更新
+            </CardTitle>
+            <CardDescription>
+              网页预览会自动加载当前版本；安装版客户端会在这里显示检查更新按钮。
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      );
+    }
+
     return null;
   }
 
@@ -51,7 +72,10 @@ export default function DesktopUpdateCard() {
     <Card className="border-slate-300/80 bg-slate-50/80">
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
-          <CardTitle>桌面版本更新</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5 text-slate-700" />
+            软件更新
+          </CardTitle>
           <Badge variant="outline">{installModeLabel}</Badge>
           <Badge variant="outline">更新通道 {APP_UPDATE_CHANNEL}</Badge>
         </div>
