@@ -16,7 +16,7 @@ import {
   resolveAccountPlanByTier,
 } from "@/lib/inspiration";
 
-const RECHARGE_PURCHASE_URL = "https://pay.ldxp.cn/item/6z1w1w";
+const RECHARGE_PURCHASE_URL = "https://pay.ldxp.cn/shop/V3TX7692";
 
 export default function ProfilePage() {
   const { user } = useAuth();
