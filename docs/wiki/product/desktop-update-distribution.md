@@ -28,3 +28,11 @@
 - `desktop/src/runtime/updater.ts`
 - `client/src/components/layout/DesktopUpdateCard.tsx`
 - `scripts/trigger-desktop-release.cjs`
+
+## Official Server Packaging
+
+正式用户使用的安装包必须连接线上服务端，而不是启动客户端内置的本地服务。注册验证码、账号数据、卡密兑换、模型额度和调用日志都属于运营侧统一数据，打包时应通过正式打包入口写入 `AI_NOVEL_API_BASE_URL`，当前默认地址为 `http://118.190.162.251:3000/api`。
+
+如果打包日志出现 `deploy.json written (no remote API configured)`，该安装包只能作为本地离线测试包，不能发给正式用户。正式安装包应使用 `pnpm run dist:desktop:nsis:official` 生成；如正式服务器地址变化，可在打包环境中显式设置 `AI_NOVEL_API_BASE_URL` 覆盖默认值。
+
+更新清单里的 `path` / `url` 必须和实际上传到 GitHub Release 的安装包文件名一致。Windows 打包层和 NSIS 目标层都应使用同一套稳定英文 `artifactName`，staged 桌面包名也应保持无作用域英文包名；否则客户端可能能发现新版本，但下载时找不到对应安装包。

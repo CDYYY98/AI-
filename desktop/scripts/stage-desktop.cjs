@@ -19,6 +19,7 @@ const prismaClientEntrypointFiles = [
   { fileName: "index.js", generatedEntry: "./generated-client/index" },
   { fileName: "edge.js", generatedEntry: "./generated-client/edge" },
 ];
+const stagedDesktopPackageName = "turing-novel-workbench";
 
 function runPnpm(args, cwd = repoRoot) {
   const command = `pnpm ${args.map((arg) => `"${arg}"`).join(" ")}`;
@@ -54,6 +55,13 @@ function replaceDirectoryWithPhysicalCopy(targetDir) {
 function replaceFileContents(targetPath, contents) {
   fs.rmSync(targetPath, { force: true });
   fs.writeFileSync(targetPath, contents, "utf8");
+}
+
+function normalizeStagedDesktopPackageMetadata() {
+  const packageJsonPath = path.join(appDir, "package.json");
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+  packageJson.name = stagedDesktopPackageName;
+  replaceFileContents(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
 
 function writeDesktopUpdaterConfig() {
@@ -247,6 +255,7 @@ function main() {
     "--prod",
     appDir,
   ]);
+  normalizeStagedDesktopPackageMetadata();
 
   copyDirectory(clientSourceDir, clientTargetDir);
   writeDesktopUpdaterConfig();

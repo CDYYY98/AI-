@@ -26,6 +26,7 @@ const allowUnsignedRelease =
   ).toLowerCase() === "true";
 const hasWindowsSigningMaterial = Boolean(windowsSigningLink);
 const builderIconPath = path.join("builder", "app-icon.ico");
+const windowsInstallerArtifactName = "turing-novel-workbench-setup-${version}.${ext}";
 
 if (!isBetaRelease && !hasWindowsSigningMaterial && !allowUnsignedRelease) {
   throw new Error(
@@ -86,6 +87,7 @@ module.exports = {
   generateUpdatesFilesForAllChannels: false,
   win: {
     icon: builderIconPath,
+    artifactName: windowsInstallerArtifactName,
     signAndEditExecutable: hasWindowsSigningMaterial,
     target: [
       {
@@ -95,7 +97,7 @@ module.exports = {
     ],
   },
   nsis: {
-    artifactName: "${productName}-${version}-setup-${arch}.${ext}",
+    artifactName: windowsInstallerArtifactName,
     oneClick: false,
     perMachine: false,
     allowToChangeInstallationDirectory: true,
@@ -109,6 +111,6 @@ module.exports = {
     installerHeaderIcon: builderIconPath,
   },
   portable: {
-    artifactName: "${productName}-${version}-portable-${arch}.${ext}",
+    artifactName: "turing-novel-workbench-portable-${version}.${ext}",
   },
 };
