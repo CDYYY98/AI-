@@ -67,8 +67,8 @@ function normalizeStagedDesktopPackageMetadata() {
 function writeDesktopUpdaterConfig() {
   const releaseChannel = (process.env.AI_NOVEL_RELEASE_CHANNEL || "beta").trim().toLowerCase();
   const releaseType = releaseChannel === "beta" ? "prerelease" : "release";
-  const owner = (process.env.AI_NOVEL_GITHUB_OWNER || "ExplosiveCoderflome").trim();
-  const repo = (process.env.AI_NOVEL_GITHUB_REPO || "AI-Novel-Writing-Assistant").trim();
+  const owner = (process.env.AI_NOVEL_GITHUB_OWNER || "CDYYY98").trim();
+  const repo = (process.env.AI_NOVEL_GITHUB_REPO || "AI-").trim();
   const config = [
     "provider: github",
     `owner: ${owner}`,

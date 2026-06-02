@@ -35,6 +35,17 @@ function formatUpdaterStatus(status: string): string {
   }
 }
 
+function formatUpdateChannel(channel: string): string {
+  switch (channel) {
+    case "release":
+      return "正式";
+    case "beta":
+      return "测试";
+    default:
+      return channel || "默认";
+  }
+}
+
 interface DesktopUpdateCardProps {
   showWebPlaceholder?: boolean;
 }
@@ -64,6 +75,7 @@ export default function DesktopUpdateCard({ showWebPlaceholder = false }: Deskto
   }
 
   const installModeLabel = APP_RUNTIME_IS_PORTABLE ? "便携版" : "安装版";
+  const updateChannelLabel = formatUpdateChannel(updater.channel || APP_UPDATE_CHANNEL);
   const showDownloadButton = updater.status === "update-available";
   const showInstallButton = updater.status === "downloaded";
   const showCheckButton = updater.status !== "downloading" && !showInstallButton;
@@ -77,7 +89,7 @@ export default function DesktopUpdateCard({ showWebPlaceholder = false }: Deskto
             软件更新
           </CardTitle>
           <Badge variant="outline">{installModeLabel}</Badge>
-          <Badge variant="outline">更新通道 {APP_UPDATE_CHANNEL}</Badge>
+          <Badge variant="outline">更新通道 {updateChannelLabel}</Badge>
         </div>
         <CardDescription>
           安装版可以检查并下载新版本，下载完成后重启应用即可安装。

@@ -38,3 +38,9 @@
 更新清单里的 `path` / `url` 必须和实际上传到 GitHub Release 的安装包文件名一致。Windows 打包层和 NSIS 目标层都应使用同一套稳定英文 `artifactName`，staged 桌面包名也应保持无作用域英文包名；否则客户端可能能发现新版本，但下载时找不到对应安装包。
 
 下载完成后应弹出原生确认框，让用户明确选择“现在安装”或“稍后”。页面上的“重启安装”按钮作为备用入口保留，但不应要求用户理解下载完成后还要主动寻找下一步。
+
+## Release Repository Ownership
+
+桌面客户端的正式发布源默认使用当前商业分发仓库 `CDYYY98/AI-`。安装包内的 `app-update.yml`、Electron Builder 的 GitHub publish 配置、GitHub Actions 发布工作流和 README 下载入口必须指向同一个仓库，保证用户下载、客户端检查更新和自动发布看到的是同一套 Release。
+
+只有在明确做临时验证时，才通过 `AI_NOVEL_GITHUB_OWNER` 和 `AI_NOVEL_GITHUB_REPO` 覆盖发布目标。覆盖发布目标生成的安装包不应发给正式用户，除非对应 GitHub Release 通道也已经准备好同版本安装包和更新清单。

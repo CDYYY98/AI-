@@ -42,6 +42,20 @@ function hasPackagedUpdateFeedConfig(): boolean {
   return fs.existsSync(path.join(process.resourcesPath, "app-update.yml"));
 }
 
+function formatUpdaterErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (message.includes("releases.atom") && message.includes("404")) {
+    return "没有找到可公开访问的更新发布通道。请确认 GitHub 仓库为公开仓库，并且已经创建正式 Release。";
+  }
+
+  if (message.includes("authentication token") || message.includes("401") || message.includes("403")) {
+    return "更新发布通道需要权限，正式用户客户端无法读取私有 GitHub Release。请使用公开仓库或公开下载源发布安装包。";
+  }
+
+  return message || "更新检查失败，请稍后重试。";
+}
+
 export function initializeDesktopUpdater(options: DesktopUpdaterOptions): DesktopUpdaterController {
   const supported = isUpdaterSupported(options);
   const hasFeedConfig = !supported || hasPackagedUpdateFeedConfig();
@@ -164,7 +178,7 @@ export function initializeDesktopUpdater(options: DesktopUpdaterOptions): Deskto
     markUpdaterSnapshot(createUpdaterSnapshot({
       ...desktopUpdaterStore.getSnapshot(),
       status: "error",
-      message: error instanceof Error ? error.message : String(error),
+      message: formatUpdaterErrorMessage(error),
       canInstall: false,
       progressPercent: null,
       bytesPerSecond: null,

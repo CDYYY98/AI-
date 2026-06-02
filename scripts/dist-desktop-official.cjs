@@ -22,6 +22,8 @@ function main() {
     env: {
       ...process.env,
       AI_NOVEL_API_BASE_URL: apiBaseUrl,
+      AI_NOVEL_RELEASE_CHANNEL: process.env.AI_NOVEL_RELEASE_CHANNEL || "release",
+      AI_NOVEL_ALLOW_UNSIGNED_RELEASE: process.env.AI_NOVEL_ALLOW_UNSIGNED_RELEASE || "true",
     },
     stdio: "inherit",
     shell: process.platform === "win32",
