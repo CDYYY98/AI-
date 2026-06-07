@@ -76,7 +76,7 @@ Web API 只接收命令和返回轻量投影；Worker 负责执行重型生产�
 
 - `continue` 请求只创建或复用 active command，立即返回 command id、task id 和轻量状态。
 - Worker lease 后调用统一 Pipeline，由 StepModule 组装输入、执行、验证输出并提交产物。
-- 前端任务中心读取 runtime projection，而不是高频拉取完整 volumes、seed payload 或候选批次。
+- 前端任务中心读取任务快照中的 `dashboardView`，而不是单独用 runtime projection 裁决主状态，也不高频拉取完整 volumes、seed payload 或候选批次。
 
 禁止做法：
 
@@ -106,6 +106,7 @@ Web API 只接收命令和返回轻量投影；Worker 负责执行重型生产�
 - `server/src/services/novel/director/DirectorCommandService.ts`
 - `server/src/services/novel/director/DirectorCommandExecutor.ts`
 - `server/src/services/novel/director/DirectorCommandInterpreter.ts`
+- `server/src/services/novel/director/projections/DirectorDashboardViewBuilder.ts`
 - `server/src/services/novel/director/directorSubsystem.ts`
 - `server/src/services/novel/director/runtime/`
 - `server/src/services/novel/director/workflowStepRuntime/`
