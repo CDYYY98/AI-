@@ -121,7 +121,7 @@ function resolveAnchorChapterOrder(signal: ReplanSignal, input: ReplanDecisionIn
   if (signal === "overdue_payoff") {
     return pickPayoffAnchor(
       input.snapshot?.narrative.overduePayoffs ?? [],
-      ["targetEndChapterOrder", "targetStartChapterOrder", "lastTouchedChapterOrder", "firstSeenChapterOrder"],
+      ["targetEndChapterOrder", "targetStartChapterOrder"],
       fallbackAnchor,
     );
   }
@@ -152,6 +152,20 @@ function resolveWindowMode(signal: ReplanSignal): WindowMode {
 
 function resolveDefaultWindowSize(): number {
   return 3;
+}
+
+function maxOverdueDistance(input: ReplanDecisionInput): number {
+  const currentOrder = input.targetChapterOrder
+    ?? input.chapterStateGoal?.chapterOrder
+    ?? input.snapshot?.narrative.currentChapterOrder
+    ?? null;
+  if (typeof currentOrder !== "number") {
+    return 0;
+  }
+  return Math.max(0, ...(input.snapshot?.narrative.overduePayoffs ?? []).map((item) => {
+    const deadline = item.targetEndChapterOrder ?? item.targetStartChapterOrder ?? null;
+    return typeof deadline === "number" ? currentOrder - deadline : 0;
+  }));
 }
 
 function nearestAnchorIndex(availableChapterOrders: number[], anchorChapterOrder: number): number {
@@ -314,10 +328,15 @@ export function buildReplanDecision(input: ReplanDecisionInput): ReplanDecision 
   ]);
   const blockingLedgerKeys = collectBlockingLedgerKeys(input.blockingLedgerKeys, input.snapshot);
   const signal = pickSignal(input, blockingIssues, blockingLedgerKeys);
-  const recommended = input.forceRecommended
+  const isWindowlessOverduePayoffWarning = signal === "overdue_payoff"
+    && maxOverdueDistance(input) <= 0
+    && !input.chapterStateGoal?.targetPayoffs?.length;
+  const recommended = !isWindowlessOverduePayoffWarning && (
+    input.forceRecommended
     || signal === "overdue_payoff"
     || signal === "next_action_replan"
-    || signal === "blocking_audit";
+    || signal === "blocking_audit"
+  );
   const anchorChapterOrder = resolveAnchorChapterOrder(signal, input);
   const requestedWindowSize = input.requestedWindowSize ?? resolveDefaultWindowSize();
   const affectedChapterOrders = recommended

@@ -36,6 +36,7 @@
 - 自动导演的质量循环预算必须真正影响下一轮修复方式：同一失败签名已经尝试过局部修复后，下一轮章节管线要切到 `heavy_repair`，不能继续硬编码 `light_repair`。
 - 章节执行失败语义必须区分：正文未生成是 `draft_generation_failed`；正文已生成但未兑现本章义务是 `draft_obligation_unmet`；自动修复后仍有阻塞问题是 `draft_repair_exhausted`；需要调整邻章计划是 `replan_required`。UI 和任务详情应展示真实根因，不再把这些情况统一压成 `chapter.draft.write 未满足其完成标准。`
 - `urgentPayoffs`、`ledgerSummary.urgentCount` 和 `nextAction=advance_payoff` 是生成前的章节职责信号，只能进入写作上下文和接收闸门判断。它们不能在生成后单独触发 `replanRecommendation`，否则系统会把“本章应该推进 payoff”误判成“本章已经失败，需要重规划”。只有逾期 payoff、显式 `nextAction=replan`、高/严重审计问题或人工请求才应打断章节链路进入重规划。
+- 逾期 payoff 只有存在明确目标窗口或当前章节目标显式要求处理时，才应作为硬重规划信号。缺少 `targetStartChapterOrder`、`targetEndChapterOrder`、`payoffChapterOrder` 和 `payoffChapterId` 的账本项应降级为待跟进风险，避免 AI 对账把模糊逾期误判成自动导演必须停止的结构错误。
 - `autoReview=false` 时仍可保存正文并进入异步资产回灌。
 - 同一章正文 content hash 未变化时，不重复跑状态快照、角色资源、伏笔账本和角色动态同步。
 - 资产回灌开始前必须先写入 `ChapterArtifactSyncCheckpoint` 的 `running` 抢占记录；同一 `novelId + chapterId + contentHash + artifactType + syncMode` 已成功或正在运行时，其他进程不得重复抽取。`running` 记录超过固定失效窗口后才允许重新抢占，抽取失败必须标记为 `failed`，避免长期卡住。
