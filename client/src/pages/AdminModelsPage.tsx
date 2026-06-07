@@ -230,11 +230,13 @@ export default function AdminModelsPage() {
   const queryClient = useQueryClient();
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [editModel, setEditModel] = useState("");
+  const [editImageModel, setEditImageModel] = useState("");
   const [editApiKey, setEditApiKey] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newBaseUrl, setNewBaseUrl] = useState("");
   const [newModel, setNewModel] = useState("");
+  const [newImageModel, setNewImageModel] = useState("");
   const [newApiKey, setNewApiKey] = useState("");
 
   const {
@@ -248,8 +250,18 @@ export default function AdminModelsPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: ({ provider, model, apiKey }: { provider: string; model?: string; apiKey?: string }) =>
-      saveAPIKeySetting(provider as any, { model, key: apiKey || undefined }),
+    mutationFn: ({
+      provider,
+      model,
+      imageModel,
+      apiKey,
+    }: {
+      provider: string;
+      model?: string;
+      imageModel?: string;
+      apiKey?: string;
+    }) =>
+      saveAPIKeySetting(provider as any, { model, imageModel, key: apiKey || undefined }),
     onSuccess: () => {
       toast.success("已保存");
       setEditingProvider(null);
@@ -272,6 +284,7 @@ export default function AdminModelsPage() {
       name: newName.trim(),
       key: newApiKey.trim() || undefined,
       model: newModel.trim() || undefined,
+      imageModel: newImageModel.trim() || undefined,
       baseURL: newBaseUrl.trim(),
     }),
     onSuccess: (res) => {
@@ -280,6 +293,7 @@ export default function AdminModelsPage() {
       setNewName("");
       setNewBaseUrl("");
       setNewModel("");
+      setNewImageModel("");
       setNewApiKey("");
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.apiKeys });
     },
@@ -343,9 +357,10 @@ export default function AdminModelsPage() {
     toast.success("已从服务器刷新当前模型配置");
   };
 
-  const handleEdit = (provider: string, currentModel: string) => {
+  const handleEdit = (provider: string, currentModel: string, currentImageModel?: string | null) => {
     setEditingProvider(provider);
     setEditModel(currentModel);
+    setEditImageModel(currentImageModel ?? "");
     setEditApiKey("");
   };
 
@@ -354,6 +369,7 @@ export default function AdminModelsPage() {
     saveMutation.mutate({
       provider: editingProvider,
       model: editModel.trim() || undefined,
+      imageModel: editImageModel.trim(),
       apiKey: editApiKey.trim() || undefined,
     });
   };
@@ -414,6 +430,12 @@ export default function AdminModelsPage() {
                 <input className="rounded border px-2 py-1 text-xs w-full" placeholder="例如 gpt-4"
                   value={newModel} onChange={(e) => setNewModel(e.target.value)} />
               </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-0.5 block">图像模型</label>
+                <input className="rounded border px-2 py-1 text-xs w-full" placeholder="例如 gpt-image-1"
+                  value={newImageModel} onChange={(e) => setNewImageModel(e.target.value)} />
+                <p className="mt-1 text-xs text-muted-foreground">填写后，角色形象图可以使用这个厂商。</p>
+              </div>
             </div>
             <Button className="mt-3" onClick={() => addMutation.mutate()} disabled={addMutation.isPending || !newName.trim() || !newBaseUrl.trim()}>
               {addMutation.isPending ? "创建中..." : "创建"}
@@ -462,6 +484,10 @@ export default function AdminModelsPage() {
                               <label className="text-xs text-muted-foreground mb-0.5 block">API Key</label>
                               <input className="rounded border px-2 py-1 text-xs w-full" placeholder="留空不修改" value={editApiKey} onChange={(e) => setEditApiKey(e.target.value)} />
                             </div>
+                            <div>
+                              <label className="text-xs text-muted-foreground mb-0.5 block">图像模型</label>
+                              <input className="rounded border px-2 py-1 text-xs w-full" placeholder="留空则不用于图片生成" value={editImageModel} onChange={(e) => setEditImageModel(e.target.value)} />
+                            </div>
                             <div className="flex gap-2">
                               <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>保存</Button>
                               <Button size="sm" variant="ghost" onClick={() => setEditingProvider(null)}>取消</Button>
@@ -470,8 +496,11 @@ export default function AdminModelsPage() {
                         ) : (
                           <div className="flex items-center gap-2">
                             <span className="text-xs">{p.currentModel || "-"}</span>
+                            {p.currentImageModel ? (
+                              <span className="text-xs text-muted-foreground">图像：{p.currentImageModel}</span>
+                            ) : null}
                             <span className="text-xs text-muted-foreground">{p.isConfigured ? "(已配置)" : "(未配置)"}</span>
-                            <Button size="sm" variant="ghost" onClick={() => handleEdit(p.provider, p.currentModel)}>编辑</Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleEdit(p.provider, p.currentModel, p.currentImageModel)}>编辑</Button>
                           </div>
                         )}
                       </td>

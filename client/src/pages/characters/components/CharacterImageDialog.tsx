@@ -11,10 +11,11 @@ import {
   optimizeCharacterImagePrompt,
   type ImagePromptOutputLanguage,
 } from "@/api/images";
+import { getAPIKeySettings } from "@/api/settings";
 import { queryKeys } from "@/api/queryKeys";
-import { useAuth } from "@/components/layout/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { LLMProvider } from "@ai-novel/shared/types/llm";
 
 const IMAGE_STATUS_TEXT: Record<string, string> = {
   queued: "排队中",
@@ -40,8 +41,6 @@ export function CharacterImageDialog({
   onOpenChange,
   onTaskCompleted,
 }: CharacterImageDialogProps) {
-  const { user } = useAuth();
-  const canConfigureModel = user?.role === "admin";
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [sourcePrompt, setSourcePrompt] = useState("");
   const [promptMode, setPromptMode] = useState<ImagePromptMode>("character_chain");
@@ -51,10 +50,27 @@ export function CharacterImageDialog({
   const [imageForm, setImageForm] = useState({
     stylePreset: "写实人像",
     negativePrompt: "低清晰度，畸形，多余肢体，文字水印",
-    provider: "grok" as "openai" | "siliconflow" | "grok",
+    provider: "" as LLMProvider,
     size: "1024x1024" as "512x512" | "768x768" | "1024x1024" | "1024x1536" | "1536x1024",
     count: 2,
   });
+
+  const apiKeySettingsQuery = useQuery({
+    queryKey: queryKeys.settings.apiKeys,
+    queryFn: getAPIKeySettings,
+    enabled: open,
+  });
+
+  const imageProviderOptions = useMemo(
+    () => (apiKeySettingsQuery.data?.data ?? [])
+      .filter((item) => item.isActive && item.isConfigured && item.supportsImageGeneration && item.currentImageModel)
+      .map((item) => ({
+        provider: item.provider,
+        name: item.name,
+        imageModel: item.currentImageModel ?? "",
+      })),
+    [apiKeySettingsQuery.data?.data],
+  );
 
   useEffect(() => {
     if (!open || !character) {
@@ -67,6 +83,25 @@ export function CharacterImageDialog({
     setDirectPromptSource(null);
     setOptimizedPromptLanguage("zh");
   }, [open, character]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    if (imageProviderOptions.length === 0) {
+      if (imageForm.provider) {
+        setImageForm((prev) => ({ ...prev, provider: "" }));
+      }
+      return;
+    }
+    const currentStillAvailable = imageProviderOptions.some((item) => item.provider === imageForm.provider);
+    if (!currentStillAvailable) {
+      setImageForm((prev) => ({
+        ...prev,
+        provider: imageProviderOptions[0]?.provider ?? "",
+      }));
+    }
+  }, [imageForm.provider, imageProviderOptions, open]);
 
   const originalPromptPreview = useMemo(() => {
     if (!character) {
@@ -168,6 +203,9 @@ export function CharacterImageDialog({
     mutationFn: async () => {
       if (!character) {
         throw new Error("请先选择角色。");
+      }
+      if (!imageForm.provider) {
+        throw new Error("请先在系统设置中为一个厂商填写图像模型。");
       }
       return generateCharacterImages({
         sceneType: "character",
@@ -311,24 +349,28 @@ export function CharacterImageDialog({
               onChange={(event) => setImageForm((prev) => ({ ...prev, negativePrompt: event.target.value }))}
             />
 
-            {canConfigureModel ? (
             <label className="space-y-1 text-sm">
               <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">模型厂商</div>
               <select
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm shadow-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                 value={imageForm.provider}
+                disabled={imageProviderOptions.length === 0}
                 onChange={(event) =>
                   setImageForm((prev) => ({
                     ...prev,
-                    provider: event.target.value as "openai" | "siliconflow" | "grok",
+                    provider: event.target.value as LLMProvider,
                   }))}
               >
-                <option value="grok">Grok (xAI)</option>
-                <option value="openai">OpenAI</option>
-                <option value="siliconflow">SiliconFlow</option>
+                {imageProviderOptions.length === 0 ? (
+                  <option value="">请先在系统设置中填写图像模型</option>
+                ) : null}
+                {imageProviderOptions.map((item) => (
+                  <option key={item.provider} value={item.provider}>
+                    {item.name} · {item.imageModel}
+                  </option>
+                ))}
               </select>
             </label>
-            ) : null}
 
             <label className="space-y-1 text-sm">
               <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">尺寸</div>
@@ -380,7 +422,7 @@ export function CharacterImageDialog({
           <Button
             className="h-11 rounded-xl px-6"
             onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending || !finalPromptPreview.trim() || Boolean(activeTaskId)}
+            disabled={generateMutation.isPending || !finalPromptPreview.trim() || !imageForm.provider || Boolean(activeTaskId)}
           >
             {generateMutation.isPending ? "提交任务中..." : "开始生成"}
           </Button>
