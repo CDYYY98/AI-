@@ -730,6 +730,7 @@ export const generationContextPackageSchema = z.object({
   ledgerOverdueItems: z.array(runtimePayoffLedgerItemSchema).default([]),
   ledgerSummary: runtimePayoffLedgerSummarySchema.nullable().optional(),
   characterResourceContext: characterResourceContextSchema.nullable().optional(),
+  ragContext: z.string().default(""),
   chapterMission: chapterMissionContextSchema.nullable().optional(),
   chapterWriteContext: chapterWriteContextSchema.nullable().optional(),
   chapterReviewContext: chapterReviewContextSchema.nullable().optional(),

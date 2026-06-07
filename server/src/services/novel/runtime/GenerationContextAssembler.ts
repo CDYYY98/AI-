@@ -2,7 +2,7 @@ import type { GenerationContextPackage } from "@ai-novel/shared/types/chapterRun
 import { prisma } from "../../../db/prisma";
 import { ragServices } from "../../rag";
 import { plannerService } from "../../planner/PlannerService";
-import { getRagQueryForChapter, novelReferenceService } from "../NovelReferenceService";
+import { buildChapterRagQuery, novelReferenceService } from "../NovelReferenceService";
 import { NovelContinuationService } from "../NovelContinuationService";
 import { parseJsonStringArray } from "../novelP0Utils";
 import { StyleBindingService } from "../../styleEngine/StyleBindingService";
@@ -591,17 +591,6 @@ export class GenerationContextAssembler {
     const openConflictBlock = buildOpenConflictBlock(mappedOpenConflicts);
     const stateContextBlock = buildStateContextBlockFromCanonical(canonicalState);
 
-    const ragQuery = getRagQueryForChapter(chapter.order, novel.title, novel.structuredOutline ?? null);
-    let ragText = "";
-    try {
-      ragText = await ragServices.hybridRetrievalService.buildContextBlock(ragQuery, {
-        novelId,
-        currentChapterOrder: chapter.order,
-      });
-    } catch {
-      ragText = "";
-    }
-
     const worldBlock = storyWorldSlice
       ? formatStoryWorldSlicePromptBlock(storyWorldSlice)
       : buildWorldContextFromNovel(novel);
@@ -651,6 +640,7 @@ export class GenerationContextAssembler {
       ledgerOverdueItems: canonicalLedger.ledgerOverdueItems,
       ledgerSummary: canonicalLedger.ledgerSummary,
       characterResourceContext,
+      ragContext: "",
       chapterMission: null,
       chapterWriteContext: null,
       chapterReviewContext: null,
@@ -684,6 +674,26 @@ export class GenerationContextAssembler {
       volumeWindow,
       contextPackage: baseContextPackage,
     });
+    const ragQuery = buildChapterRagQuery({
+      chapterOrder: chapter.order,
+      novelTitle: novel.title,
+      chapterTitle: chapterWriteContext.chapterMission.title,
+      objective: chapterWriteContext.chapterMission.objective,
+      expectation: chapterWriteContext.chapterMission.expectation,
+      mustAdvance: chapterWriteContext.chapterMission.mustAdvance,
+      targetConflicts: chapterWriteContext.chapterStateGoal?.targetConflicts ?? [],
+      participantNames: chapterWriteContext.participants.map((participant) => participant.name),
+      structuredOutline: novel.structuredOutline ?? null,
+    });
+    let ragText = "";
+    try {
+      ragText = await ragServices.hybridRetrievalService.buildContextBlock(ragQuery, {
+        novelId,
+        currentChapterOrder: chapter.order,
+      });
+    } catch {
+      ragText = "";
+    }
     const chapterReviewContext = buildChapterReviewContext(chapterWriteContext, baseContextPackage);
     const chapterRepairContext = buildChapterRepairContextFromPackage({
       ...baseContextPackage,
@@ -749,6 +759,7 @@ export class GenerationContextAssembler {
       ledgerOverdueItems: canonicalLedger.ledgerOverdueItems,
       ledgerSummary: canonicalLedger.ledgerSummary,
       characterResourceContext,
+      ragContext: ragText,
       chapterMission: chapterWriteContext.chapterMission,
       chapterWriteContext,
       chapterReviewContext,
