@@ -72,3 +72,39 @@ test("chapter execution progress treats needs_repair as a local recoverable stat
   assert.equal(chapter6.status, "not_started");
   assert.equal(chapter6.currentStage, "draft_started");
 });
+
+test("chapter execution progress ignores generating hint when draft is empty", async (t) => {
+  const originalFindMany = prisma.chapter.findMany;
+  prisma.chapter.findMany = async () => [
+    {
+      id: "chapter-7",
+      order: 7,
+      title: "Chapter 7",
+      content: "",
+      taskSheet: "Task sheet",
+      sceneCards: null,
+      expectation: null,
+      generationState: "planned",
+      chapterStatus: "generating",
+      repairHistory: null,
+      qualityReports: [],
+      auditReports: [],
+      storyStateSnapshots: [],
+      canonicalStateVersions: [],
+    },
+  ];
+  t.after(() => {
+    prisma.chapter.findMany = originalFindMany;
+  });
+
+  const summary = await new ChapterExecutionProgressInspector().inspectNovel("novel-1");
+  const chapter7 = summary.chapters[0];
+
+  assert.equal(summary.totalChapters, 1);
+  assert.equal(summary.activeChapterId, null);
+  assert.equal(summary.currentChapterId, "chapter-7");
+  assert.equal(chapter7.status, "not_started");
+  assert.equal(chapter7.nextAction, "write_draft");
+  assert.ok(chapter7.completedStages.includes("draft_started"));
+  assert.ok(chapter7.missingStages.includes("draft_saved"));
+});

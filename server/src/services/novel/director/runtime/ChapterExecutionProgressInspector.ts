@@ -207,7 +207,7 @@ export class ChapterExecutionProgressInspector {
         ? "approved"
         : chapter.chapterStatus === "pending_review"
           ? "reviewable"
-          : hasDraft || chapter.chapterStatus === "generating"
+          : hasDraft
             ? "running"
             : "not_started";
     const nextAction = needsRepair
