@@ -119,3 +119,25 @@ test("director usage telemetry projection can query a book by novel or task ids"
     spies.restore();
   }
 });
+
+test("director largest chapter usage scopes budget checks to task ids only", async () => {
+  const spies = installFindManySpy([usageRow({
+    metadataJson: JSON.stringify({ chapterId: "chapter-1" }),
+    totalTokens: 90000,
+  })]);
+  try {
+    const service = new DirectorUsageTelemetryQueryService();
+    const result = await service.getLargestChapterUsage({
+      novelId: "novel-1",
+      taskIds: ["task-1", "task-2", "task-1"],
+    });
+
+    assert.deepEqual(spies.calls[0].where, {
+      taskId: { in: ["task-1", "task-2"] },
+    });
+    assert.equal(result.chapterId, "chapter-1");
+    assert.equal(result.totalTokens, 90000);
+  } finally {
+    spies.restore();
+  }
+});
