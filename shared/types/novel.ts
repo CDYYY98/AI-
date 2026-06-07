@@ -711,6 +711,7 @@ export interface ReplanResult {
 export interface VolumeChapterPlan {
   id: string;
   volumeId: string;
+  chapterId?: string | null;
   chapterOrder: number;
   beatKey?: string | null;
   title: string;

@@ -40,6 +40,7 @@ export interface LegacyVolumeSource {
 
 const volumeChapterInputSchema = z.object({
   id: z.string().trim().min(1).optional(),
+  chapterId: z.string().trim().nullable().optional(),
   chapterOrder: z.number().int().min(1).optional(),
   order: z.number().int().min(1).optional(),
   beatKey: z.string().trim().nullable().optional(),
@@ -213,6 +214,7 @@ function sanitizeVolumeChapter(
   return {
     id: chapter.id?.trim() || createLocalId(`${novelId}-chapter`),
     volumeId,
+    chapterId: normalizeText(chapter.chapterId),
     chapterOrder: chapter.chapterOrder ?? chapter.order ?? index + 1,
     beatKey: normalizeText(chapter.beatKey),
     title: chapter.title.trim(),
@@ -305,6 +307,7 @@ function normalizeLegacyChapter(raw: unknown, index: number): VolumeChapterPlan 
   return {
     id: createLocalId("legacy-chapter"),
     volumeId: "",
+    chapterId: null,
     chapterOrder,
     beatKey,
     title,
@@ -493,6 +496,7 @@ function buildFallbackVolumeSkeleton(source: LegacyVolumeSource): VolumePlan[] {
       chapters: chunk.map((chapter) => ({
         id: createLocalId("legacy-chapter"),
         volumeId,
+        chapterId: null,
         chapterOrder: chapter.order,
         beatKey: null,
         title: chapter.title,

@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type {
+  VolumePlan,
   VolumePlanDocument,
   VolumeSyncPreview,
 } from "@ai-novel/shared/types/novel";
@@ -45,6 +46,23 @@ export interface VolumeChapterSyncOptions {
 export class VolumeChapterSyncService {
   constructor(private readonly deps: VolumeChapterSyncServiceDeps) {}
 
+  private applyChapterLinks(
+    volumes: VolumePlan[],
+    links: Array<{ volumeChapterId: string; chapterId: string }>,
+  ): VolumePlan[] {
+    if (links.length === 0) {
+      return volumes;
+    }
+    const chapterIdByVolumeChapterId = new Map(links.map((link) => [link.volumeChapterId, link.chapterId]));
+    return volumes.map((volume) => ({
+      ...volume,
+      chapters: volume.chapters.map((chapter) => {
+        const chapterId = chapterIdByVolumeChapterId.get(chapter.id);
+        return chapterId ? { ...chapter, chapterId } : chapter;
+      }),
+    }));
+  }
+
   async syncVolumeChaptersWithOptions(
     novelId: string,
     input: VolumeSyncInput,
@@ -89,15 +107,9 @@ export class VolumeChapterSyncService {
         activeVersionId: versionId,
         source: "volume" as const,
       };
-      await tx.volumePlanVersion.update({
-        where: { id: versionId },
-        data: {
-          contentJson: serializeVolumeWorkspaceDocument(persistedDocument),
-        },
-      });
-      await persistActiveVolumeWorkspace(tx, novelId, persistedDocument, versionId);
+      const linkUpdates = [...plan.links];
       for (const item of plan.creates) {
-        await tx.chapter.create({
+        const created = await tx.chapter.create({
           data: {
             novelId,
             title: item.chapter.title,
@@ -111,9 +123,16 @@ export class VolumeChapterSyncService {
             taskSheet: item.chapter.taskSheet?.trim() || null,
             sceneCards: item.chapter.sceneCards ?? null,
           },
+          select: { id: true },
+        });
+        item.chapter.chapterId = created.id;
+        linkUpdates.push({
+          volumeChapterId: item.chapter.id,
+          chapterId: created.id,
         });
       }
       for (const item of plan.updates) {
+        item.chapter.chapterId = item.chapterId;
         await tx.chapter.updateMany({
           where: { id: item.chapterId, novelId },
           data: {
@@ -147,6 +166,19 @@ export class VolumeChapterSyncService {
           where: { id: item.chapterId, novelId },
         });
       }
+      const linkedDocument = linkUpdates.length > 0
+        ? {
+          ...persistedDocument,
+          volumes: this.applyChapterLinks(persistedDocument.volumes, linkUpdates),
+        }
+        : persistedDocument;
+      await tx.volumePlanVersion.update({
+        where: { id: versionId },
+        data: {
+          contentJson: serializeVolumeWorkspaceDocument(linkedDocument),
+        },
+      });
+      await persistActiveVolumeWorkspace(tx, novelId, linkedDocument, versionId);
     });
 
     if (options.emitEvent !== false) {

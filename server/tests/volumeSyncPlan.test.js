@@ -175,6 +175,120 @@ test("buildVolumeSyncPlan clears content on moved generated chapters when preser
   assert.equal(plan.deletes[0].chapterId, "chapter-2");
 });
 
+test("buildVolumeSyncPlan prefers explicit chapterId links over order or title matches", () => {
+  const volumes = createVolume([
+    {
+      id: "volume-chapter-linked",
+      volumeId: "volume-1",
+      chapterId: "chapter-linked",
+      chapterOrder: 1,
+      title: "Same Title",
+      summary: "Linked chapter summary",
+      purpose: "Keep the linked execution chapter",
+      conflictLevel: null,
+      revealLevel: null,
+      targetWordCount: 3000,
+      mustAvoid: null,
+      taskSheet: null,
+      payoffRefs: [],
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    },
+  ]);
+  const existingChapters = [
+    {
+      id: "chapter-order-match",
+      order: 1,
+      title: "Same Title",
+      content: "",
+      expectation: "Wrong chapter",
+    },
+    {
+      id: "chapter-linked",
+      order: 2,
+      title: "Different Title",
+      content: "",
+      expectation: "Linked old summary",
+    },
+  ];
+
+  const plan = buildVolumeSyncPlan(volumes, existingChapters, {
+    preserveContent: true,
+    applyDeletes: false,
+  });
+
+  assert.equal(plan.updates[0].chapterId, "chapter-linked");
+  assert.equal(plan.preview.moveCount, 1);
+  assert.ok(plan.preview.items.some((item) => item.action === "delete_candidate" && item.previousTitle === "Same Title"));
+});
+
+test("buildVolumeSyncPlan only falls back to order when chapterId is missing", () => {
+  const volumes = createVolume([
+    {
+      id: "volume-chapter-stale-link",
+      volumeId: "volume-1",
+      chapterId: "missing-chapter",
+      chapterOrder: 1,
+      title: "Same Title",
+      summary: "Should not attach to the wrong chapter",
+      purpose: null,
+      conflictLevel: null,
+      revealLevel: null,
+      targetWordCount: null,
+      mustAvoid: null,
+      taskSheet: null,
+      payoffRefs: [],
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    },
+    {
+      id: "volume-chapter-needs-fallback",
+      volumeId: "volume-1",
+      chapterOrder: 2,
+      title: "Fallback Title",
+      summary: "Fallback summary",
+      purpose: null,
+      conflictLevel: null,
+      revealLevel: null,
+      targetWordCount: null,
+      mustAvoid: null,
+      taskSheet: null,
+      payoffRefs: [],
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    },
+  ]);
+  const existingChapters = [
+    {
+      id: "chapter-order-match",
+      order: 1,
+      title: "Same Title",
+      content: "",
+      expectation: "Wrong chapter",
+    },
+    {
+      id: "chapter-fallback",
+      order: 2,
+      title: "Fallback Title",
+      content: "",
+      expectation: "Old fallback summary",
+    },
+  ];
+
+  const plan = buildVolumeSyncPlan(volumes, existingChapters, {
+    preserveContent: true,
+    applyDeletes: false,
+  });
+
+  assert.equal(plan.preview.createCount, 1);
+  assert.equal(plan.updates.length, 1);
+  assert.equal(plan.updates[0].chapterId, "chapter-fallback");
+  assert.deepEqual(plan.links, [{
+    volumeChapterId: "volume-chapter-needs-fallback",
+    chapterId: "chapter-fallback",
+  }]);
+});
+
 test("buildTaskSheetFromVolumeChapter backfills stable chapter task sheets from volume planning fields", () => {
   const taskSheet = buildTaskSheetFromVolumeChapter({
     id: "volume-chapter-1",
