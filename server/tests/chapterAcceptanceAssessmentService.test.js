@@ -91,7 +91,7 @@ test("normalizeAssessment keeps under-length issue when actual content is still 
   assert.deepEqual(normalized.blockingIssues.map((issue) => issue.code), ["length_insufficient"]);
 });
 
-test("normalizeAssessment routes missing obligations to repairable draft obligation gaps", () => {
+test("normalizeAssessment lets soft missing obligations continue with tracked risk", () => {
   const normalized = normalizeAssessment(createAssessment({
     status: "accepted",
     missingObligations: [{
@@ -103,7 +103,24 @@ test("normalizeAssessment routes missing obligations to repairable draft obligat
     decisionReason: "只需局部补写即可兑现本章义务。",
   }), "字".repeat(3600), 3000);
 
+  assert.equal(normalized.status, "continue_with_risk");
+  assert.equal(normalized.continuePolicy, "continue");
+  assert.equal(normalized.missingObligations[0].kind, "payoff_touch");
+});
+
+test("normalizeAssessment keeps hard missing obligations repairable", () => {
+  const normalized = normalizeAssessment(createAssessment({
+    status: "accepted",
+    missingObligations: [{
+      kind: "must_hit_now",
+      summary: "A required chapter beat was skipped.",
+      evidence: "The draft ends before the planned confrontation happens.",
+    }],
+    repairability: "patchable_obligation_gap",
+    decisionReason: "The active chapter must include this beat before continuing.",
+  }), "字".repeat(3600), 3000);
+
   assert.equal(normalized.status, "repairable");
   assert.equal(normalized.continuePolicy, "repair_once");
-  assert.equal(normalized.missingObligations[0].kind, "payoff_touch");
+  assert.equal(normalized.missingObligations[0].kind, "must_hit_now");
 });
