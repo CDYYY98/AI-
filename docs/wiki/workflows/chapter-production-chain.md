@@ -38,6 +38,7 @@
 - `urgentPayoffs`、`ledgerSummary.urgentCount` 和 `nextAction=advance_payoff` 是生成前的章节职责信号，只能进入写作上下文和接收闸门判断。它们不能在生成后单独触发 `replanRecommendation`，否则系统会把“本章应该推进 payoff”误判成“本章已经失败，需要重规划”。只有逾期 payoff、显式 `nextAction=replan`、高/严重审计问题或人工请求才应打断章节链路进入重规划。
 - `autoReview=false` 时仍可保存正文并进入异步资产回灌。
 - 同一章正文 content hash 未变化时，不重复跑状态快照、角色资源、伏笔账本和角色动态同步。
+- 资产回灌开始前必须先写入 `ChapterArtifactSyncCheckpoint` 的 `running` 抢占记录；同一 `novelId + chapterId + contentHash + artifactType + syncMode` 已成功或正在运行时，其他进程不得重复抽取。`running` 记录超过固定失效窗口后才允许重新抢占，抽取失败必须标记为 `failed`，避免长期卡住。
 - 资产同步模式：
   - `adaptive`：默认模式，关键资产异步同步，高风险或周期节点触发全量伏笔校准。
   - `deferred`：快速产文，资产同步可延后批处理。
