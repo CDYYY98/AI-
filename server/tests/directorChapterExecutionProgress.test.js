@@ -14,6 +14,7 @@ test("chapter execution progress treats needs_repair as a local recoverable stat
       order: 5,
       title: "Chapter 5",
       content: "Draft body",
+      riskFlags: null,
       taskSheet: "Task sheet",
       sceneCards: null,
       expectation: null,
@@ -39,6 +40,7 @@ test("chapter execution progress treats needs_repair as a local recoverable stat
       order: 6,
       title: "Chapter 6",
       content: "",
+      riskFlags: null,
       taskSheet: "Task sheet",
       sceneCards: null,
       expectation: null,
@@ -81,6 +83,7 @@ test("chapter execution progress ignores generating hint when draft is empty", a
       order: 7,
       title: "Chapter 7",
       content: "",
+      riskFlags: null,
       taskSheet: "Task sheet",
       sceneCards: null,
       expectation: null,
@@ -107,4 +110,47 @@ test("chapter execution progress ignores generating hint when draft is empty", a
   assert.equal(chapter7.nextAction, "write_draft");
   assert.ok(chapter7.completedStages.includes("draft_started"));
   assert.ok(chapter7.missingStages.includes("draft_saved"));
+});
+
+test("chapter execution progress treats deferred quality debt as continuable", async (t) => {
+  const originalFindMany = prisma.chapter.findMany;
+  prisma.chapter.findMany = async () => [
+    {
+      id: "chapter-8",
+      order: 8,
+      title: "Chapter 8",
+      content: "Draft body",
+      riskFlags: JSON.stringify({
+        qualityLoop: {
+          overallStatus: "risk",
+          recommendedAction: "patch_repair",
+          rootCauseCode: "draft_obligation_unmet",
+          terminalAction: "defer_and_continue",
+          blockingObligations: [{ kind: "must_hit_now", summary: "补足本章目标变化" }],
+        },
+      }),
+      taskSheet: "Task sheet",
+      sceneCards: null,
+      expectation: null,
+      generationState: "reviewed",
+      chapterStatus: "pending_review",
+      repairHistory: null,
+      qualityReports: [],
+      auditReports: [{ issues: [{ status: "open", severity: "high" }] }],
+      storyStateSnapshots: [],
+      canonicalStateVersions: [],
+    },
+  ];
+  t.after(() => {
+    prisma.chapter.findMany = originalFindMany;
+  });
+
+  const summary = await new ChapterExecutionProgressInspector().inspectNovel("novel-1");
+  const chapter8 = summary.chapters[0];
+
+  assert.equal(summary.needsRepairChapters, 0);
+  assert.equal(chapter8.status, "reviewable");
+  assert.equal(chapter8.nextAction, "continue_next_chapter");
+  assert.ok(chapter8.completedStages.includes("chapter_state_committed"));
+  assert.equal(chapter8.evidence.hasContinuableRiskFlags, true);
 });

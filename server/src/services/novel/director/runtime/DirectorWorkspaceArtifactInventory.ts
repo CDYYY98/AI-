@@ -548,12 +548,24 @@ export function hasContinuableQualityLoopRiskFlags(riskFlags: string | null | un
       return false;
     }
     const qualityLoop = (parsed as { qualityLoop?: unknown }).qualityLoop;
+    if (!qualityLoop || typeof qualityLoop !== "object" || Array.isArray(qualityLoop)) {
+      return false;
+    }
+    const loop = qualityLoop as {
+      overallStatus?: unknown;
+      recommendedAction?: unknown;
+      rootCauseCode?: unknown;
+      terminalAction?: unknown;
+    };
+    if (loop.rootCauseCode === "replan_required" || loop.recommendedAction === "replan") {
+      return false;
+    }
+    if (loop.terminalAction === "defer_and_continue") {
+      return true;
+    }
     return Boolean(
-      qualityLoop
-        && typeof qualityLoop === "object"
-        && !Array.isArray(qualityLoop)
-        && (qualityLoop as { overallStatus?: unknown }).overallStatus === "valid"
-        && (qualityLoop as { recommendedAction?: unknown }).recommendedAction === "continue",
+      loop.overallStatus === "valid"
+        && loop.recommendedAction === "continue",
     );
   } catch {
     return false;
