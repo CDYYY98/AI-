@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAPIKeySettings, getLLMSelectionSetting, saveLLMSelectionSetting } from "@/api/settings";
 import { queryKeys } from "@/api/queryKeys";
@@ -11,6 +11,13 @@ export default function LLMSelectionBootstrap() {
   const isAdmin = user?.role === "admin";
   const store = useLLMStore();
   const queryClient = useQueryClient();
+  const [apiKeyQueryEnabled, setApiKeyQueryEnabled] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setApiKeyQueryEnabled(true), 700);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const selectionQuery = useQuery({
     queryKey: queryKeys.settings.llmSelection,
     queryFn: getLLMSelectionSetting,
@@ -21,7 +28,7 @@ export default function LLMSelectionBootstrap() {
     queryKey: queryKeys.settings.apiKeys,
     queryFn: getAPIKeySettings,
     staleTime: 5 * 60 * 1000,
-    enabled: isAdmin,
+    enabled: isAdmin && apiKeyQueryEnabled,
   });
 
   const saveSelectionMutation = useMutation({
