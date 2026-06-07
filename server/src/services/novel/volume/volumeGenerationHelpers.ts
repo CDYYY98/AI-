@@ -11,6 +11,7 @@ import type {
   VolumeStrategyPlan,
 } from "@ai-novel/shared/types/novel";
 import {
+  parseChapterScenePlan,
   normalizeChapterScenePlan,
   serializeChapterScenePlan,
 } from "@ai-novel/shared/types/chapterLengthControl";
@@ -590,6 +591,31 @@ export async function generateChapterTaskSheetDetail(params: {
   taskSheet: string;
   sceneCards: string;
 }> {
+  const existingChapter = params.promptInput.targetChapter;
+  if (
+    !params.promptInput.guidance?.trim()
+    && existingChapter.taskSheet?.trim()
+    && existingChapter.sceneCards?.trim()
+  ) {
+    const targetWordCount = existingChapter.targetWordCount ?? 2200;
+    const scenePlan = parseChapterScenePlan(existingChapter.sceneCards, { targetWordCount });
+    if (scenePlan) {
+      return {
+        purpose: existingChapter.purpose?.trim() || existingChapter.summary.trim(),
+        exclusiveEvent: existingChapter.exclusiveEvent?.trim() || existingChapter.summary.trim(),
+        endingState: existingChapter.endingState?.trim() || "本章完成当前章节任务，并为下一章留下明确入口。",
+        nextChapterEntryState: existingChapter.nextChapterEntryState?.trim() || existingChapter.endingState?.trim() || "下一章承接本章结果继续推进。",
+        conflictLevel: existingChapter.conflictLevel ?? 3,
+        revealLevel: existingChapter.revealLevel ?? 2,
+        targetWordCount,
+        mustAvoid: existingChapter.mustAvoid?.trim() || "避免偏离本章任务单和卷节奏。",
+        payoffRefs: existingChapter.payoffRefs,
+        taskSheet: existingChapter.taskSheet.trim(),
+        sceneCards: serializeChapterScenePlan(scenePlan),
+      };
+    }
+  }
+
   let lastError: Error | null = null;
   let qualityFeedback: string | null = null;
   const qualityGate = new ChapterTaskSheetQualityGateService();

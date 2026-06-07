@@ -41,6 +41,7 @@
 - `replanRecommendation.action` 是章节链路的阻塞边界。只有 `stop_for_replan` 可以写入 `replanAlertDetails` 并触发重规划检查点；`local_patch_plan` 只能进入质量提醒和局部修复预算，`continue_with_warning` 只能作为后续优化风险，不能阻塞后续章节。
 - `autoReview=false` 时仍可保存正文并进入异步资产回灌。
 - 同一章正文 content hash 未变化时，不重复跑状态快照、角色资源、伏笔账本和角色动态同步。
+- 同一章规划已经有可解析的 `taskSheet` 和 `sceneCards`，且用户没有提供新的 guidance 时，章节执行合同细化应复用已有规划，不重复调用 `novel.volume.chapter_execution_contract`。带 guidance 的重生成仍允许覆盖旧结果。
 - 资产回灌开始前必须先写入 `ChapterArtifactSyncCheckpoint` 的 `running` 抢占记录；同一 `novelId + chapterId + contentHash + artifactType + syncMode` 已成功或正在运行时，其他进程不得重复抽取。`running` 记录超过固定失效窗口后才允许重新抢占，抽取失败必须标记为 `failed`，避免长期卡住。
 - 资产同步模式：
   - `adaptive`：默认模式，关键资产异步同步，高风险或周期节点触发全量伏笔校准。
