@@ -95,6 +95,7 @@ import {
   buildDisplayAutoDirectorTask,
   canArchiveCompletedAutoDirectorTask,
   resolveAutomationActionText,
+  resolveTakeoverDialogContextTaskId,
   resolveTakeoverModeFromAutomation,
 } from "./novelEditAutomationStatus";
 
@@ -2215,17 +2216,26 @@ export default function NovelEdit() {
   const renderTakeoverEntry = (
     step: "basic" | "story_macro" | "character" | "outline" | "structured" | "chapter" | "pipeline",
     variant: "default" | "outline" | "secondary" = "default",
-  ) => (
-    <NovelExistingProjectTakeoverDialog
-      novelId={id}
-      basicForm={basicForm}
-      genreOptions={genreOptions}
-      storyModeOptions={storyModeOptions}
-      worldOptions={worldListQuery.data?.data ?? []}
-      triggerVariant={variant}
-      defaultEntryStep={step}
-    />
-  );
+  ) => {
+    const takeoverContextTaskId = resolveTakeoverDialogContextTaskId({
+      directorTaskId,
+      activeAutoDirectorTask,
+      projection: bookAutomationProjection,
+    });
+
+    return (
+      <NovelExistingProjectTakeoverDialog
+        novelId={id}
+        basicForm={basicForm}
+        genreOptions={genreOptions}
+        storyModeOptions={storyModeOptions}
+        worldOptions={worldListQuery.data?.data ?? []}
+        triggerVariant={variant}
+        defaultEntryStep={step}
+        workflowTaskId={takeoverContextTaskId}
+      />
+    );
+  };
 
   const { basicTab, outlineTab, structuredTab } = buildNovelEditPlanningTabs({
     id,

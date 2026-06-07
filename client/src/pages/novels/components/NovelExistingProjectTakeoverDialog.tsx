@@ -47,6 +47,7 @@ interface NovelExistingProjectTakeoverDialogProps {
   worldOptions: Array<{ id: string; name: string }>;
   triggerVariant?: "default" | "outline" | "secondary";
   defaultEntryStep?: DirectorTakeoverEntryStep;
+  workflowTaskId?: string | null;
 }
 
 const RUN_MODE_OPTIONS: Array<{ value: DirectorRunMode; label: string; description: string }> = [
@@ -137,6 +138,7 @@ export default function NovelExistingProjectTakeoverDialog({
   worldOptions,
   triggerVariant = "outline",
   defaultEntryStep = "basic",
+  workflowTaskId,
 }: NovelExistingProjectTakeoverDialogProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -154,6 +156,7 @@ export default function NovelExistingProjectTakeoverDialog({
   const autoApprovalDraft = useDirectorAutoApprovalDraft(open);
   const { reset: resetAutoApprovalDraft } = autoApprovalDraft;
   const canConfigureModel = user?.role === "admin";
+  const contextTaskId = workflowTaskId?.trim() || "";
 
   const readinessQuery = useQuery({
     queryKey: queryKeys.novels.autoDirectorTakeoverReadiness(novelId),
@@ -464,10 +467,11 @@ export default function NovelExistingProjectTakeoverDialog({
                             className="w-full sm:w-auto"
                             onClick={() => {
                               setOpen(false);
-                              if (readiness.activeTaskId) {
+                              const targetTaskId = contextTaskId || readiness.activeTaskId;
+                              if (targetTaskId) {
                                 navigate(buildEditRoute({
                                   novelId,
-                                  workflowTaskId: readiness.activeTaskId,
+                                  workflowTaskId: targetTaskId,
                                   stage: selectedEntryStep === "basic" ? "basic" : selectedEntryStep,
                                 }));
                                 return;

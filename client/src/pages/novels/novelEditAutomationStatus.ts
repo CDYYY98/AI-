@@ -31,6 +31,78 @@ function taskStatusFromProjection(status: DirectorBookAutomationStatus): TaskSta
   return null;
 }
 
+function isTerminalWorkflowTaskStatus(status: string | null | undefined): boolean {
+  return status === "failed" || status === "cancelled" || status === "succeeded";
+}
+
+export function shouldPreserveRequestedDirectorTaskId(input: {
+  directorTaskId: string | null | undefined;
+  requestedTask: Pick<UnifiedTaskDetail, "id" | "status"> | null | undefined;
+}): boolean {
+  const pinnedTaskId = input.directorTaskId?.trim() || "";
+  if (!pinnedTaskId || !input.requestedTask) {
+    return false;
+  }
+  if (input.requestedTask.id !== pinnedTaskId) {
+    return false;
+  }
+  return input.requestedTask.status !== "cancelled";
+}
+
+export function shouldShowPinnedBookAutomationProjection(input: {
+  projection: {
+    status: DirectorBookAutomationProjection["status"];
+    latestTask?: { id?: string | null } | null;
+  } | null | undefined;
+  directorTaskId: string | null | undefined;
+}): boolean {
+  const pinnedTaskId = input.directorTaskId?.trim() || "";
+  if (!pinnedTaskId || !input.projection?.latestTask?.id) {
+    return false;
+  }
+  if (input.projection.latestTask.id !== pinnedTaskId) {
+    return false;
+  }
+  return input.projection.status === "failed"
+    || input.projection.status === "completed"
+    || input.projection.status === "cancelled";
+}
+
+export function shouldAutofocusProjectedDirectorTask(
+  projection: DirectorBookAutomationProjection | null | undefined,
+): boolean {
+  if (!projection?.latestTask?.id) {
+    return false;
+  }
+  if (isTerminalWorkflowTaskStatus(projection.latestTask?.status ?? null)) {
+    return false;
+  }
+  return projection.status === "queued"
+    || projection.status === "running"
+    || projection.status === "waiting_approval"
+    || projection.status === "waiting_recovery"
+    || projection.status === "blocked";
+}
+
+export function resolveTakeoverDialogContextTaskId(input: {
+  directorTaskId?: string | null;
+  activeAutoDirectorTask?: Pick<UnifiedTaskDetail, "id"> | null;
+  projection?: DirectorBookAutomationProjection | null;
+}): string {
+  const pinnedDirectorTaskId = input.directorTaskId?.trim() || "";
+  if (pinnedDirectorTaskId) {
+    return pinnedDirectorTaskId;
+  }
+  const activeTaskId = input.activeAutoDirectorTask?.id?.trim() || "";
+  if (activeTaskId) {
+    return activeTaskId;
+  }
+  if (shouldAutofocusProjectedDirectorTask(input.projection)) {
+    return input.projection?.latestTask?.id?.trim() || "";
+  }
+  return "";
+}
+
 export function buildDisplayAutoDirectorTask(
   task: UnifiedTaskDetail | null,
   projection: DirectorBookAutomationProjection | null | undefined,
@@ -39,6 +111,9 @@ export function buildDisplayAutoDirectorTask(
     return task;
   }
   if (!task || !projectionMatchesTask(projection, task)) {
+    return task;
+  }
+  if (isTerminalWorkflowTaskStatus(task.status) && projection.status !== "failed" && projection.status !== "blocked") {
     return task;
   }
   const projectedStatus = taskStatusFromProjection(projection.status);
