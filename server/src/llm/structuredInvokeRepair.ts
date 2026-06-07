@@ -206,6 +206,7 @@ export async function repairWithLlm<T>(
     taskType: input.taskType,
     promptMeta: input.promptMeta,
     validationError,
+    schemaPaths: validationPaths,
     repairSystem,
     repairHuman,
   });
@@ -247,6 +248,7 @@ export async function repairWithLlm<T>(
       taskType: input.taskType,
       promptMeta: input.promptMeta,
       validationError,
+      schemaPaths: validationPaths,
       repairSystem,
       repairHuman,
       rawOutput: repairedRaw,
@@ -299,6 +301,7 @@ export async function repairWithLlm<T>(
       taskType: input.taskType,
       promptMeta: input.promptMeta,
       validationError,
+      schemaPaths: validationPaths,
       repairSystem,
       repairHuman,
       latencyMs: Date.now() - startedAt,
