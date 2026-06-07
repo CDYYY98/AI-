@@ -795,6 +795,12 @@ export class ChapterRuntimeCoordinator {
           input.auditResult.auditReports,
           input.contextPackage.ledgerSummary ?? null,
         ),
+        action: hasBlockingIssues || this.deps.plannerService.shouldTriggerReplanFromAudit(
+          input.auditResult.auditReports,
+          input.contextPackage.ledgerSummary ?? null,
+        )
+          ? "stop_for_replan" as const
+          : "continue_with_warning" as const,
         reason: input.contextPackage.ledgerSummary?.overdueCount
           ? "Overdue payoff ledger items require replan or explicit payoff handling."
           : hasBlockingIssues
@@ -812,7 +818,7 @@ export class ChapterRuntimeCoordinator {
     const failureClassification = buildFailureClassification({
       acceptance: input.acceptance,
       hasBlockingIssues,
-      replanRecommended: replanRecommendation.recommended,
+      replanRecommended: replanRecommendation.action === "stop_for_replan",
       missingObligations: input.acceptance.missingObligations,
     });
 
