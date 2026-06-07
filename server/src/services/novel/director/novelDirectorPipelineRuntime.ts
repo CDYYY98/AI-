@@ -28,6 +28,7 @@ import {
   runDirectorCharacterSetupPhase,
   runDirectorStructuredOutlinePhase,
   runDirectorVolumeStrategyPhase,
+  type DirectorCharacterSetupPhaseResult,
 } from "./novelDirectorPipelinePhases";
 import { resolveSafeDirectorPipelineStartPhase } from "./novelDirectorRecovery";
 import {
@@ -385,7 +386,7 @@ export class NovelDirectorPipelineRuntime {
     taskId: string,
     novelId: string,
     input: DirectorConfirmRequest,
-  ): Promise<boolean> {
+  ): Promise<DirectorCharacterSetupPhaseResult> {
     return this.runCharacterSetupPhase(taskId, novelId, input);
   }
 
@@ -447,7 +448,7 @@ export class NovelDirectorPipelineRuntime {
     taskId: string,
     novelId: string,
     input: DirectorConfirmRequest,
-  ): Promise<boolean> {
+  ): Promise<DirectorCharacterSetupPhaseResult> {
     return runDirectorCharacterSetupPhase({
       taskId,
       novelId,

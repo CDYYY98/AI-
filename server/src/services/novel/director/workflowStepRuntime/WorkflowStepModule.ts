@@ -145,6 +145,7 @@ export interface WorkflowStepModule<I, O> extends WorkflowStepModuleDescriptor {
   inspectProgress: (context: WorkflowStepExecutionContext) => Promise<WorkflowStepProgress>;
   recover: (context: WorkflowStepExecutionContext) => Promise<WorkflowStepRecoveryPlan>;
   completeCriteria?: (output: O, context: WorkflowStepExecutionContext) => boolean | Promise<boolean>;
+  acceptablePauseCriteria?: (output: O, context: WorkflowStepExecutionContext) => boolean | Promise<boolean>;
   summarizeResult?: (output: O) => WorkflowStepSummary;
   getApprovalRequirement?: (
     input: I,
@@ -269,6 +270,7 @@ export function createWorkflowStepModule<I, O>(
     | "inspectProgress"
     | "recover"
     | "completeCriteria"
+    | "acceptablePauseCriteria"
     | "summarizeResult"
     | "getApprovalRequirement"
   >,
@@ -285,6 +287,7 @@ export function createWorkflowStepModule<I, O>(
     inspectProgress: options.inspectProgress,
     recover: options.recover,
     completeCriteria: options?.completeCriteria,
+    acceptablePauseCriteria: options?.acceptablePauseCriteria,
     summarizeResult: options?.summarizeResult,
     getApprovalRequirement: options?.getApprovalRequirement,
   };

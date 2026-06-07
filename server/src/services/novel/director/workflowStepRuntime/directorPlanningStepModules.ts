@@ -1,6 +1,7 @@
 import type { DirectorConfirmRequest } from "@ai-novel/shared/types/novelDirector";
 import type { VolumePlanDocument } from "@ai-novel/shared/types/novel";
 import type { StoryMacroPlan } from "@ai-novel/shared/types/storyMacro";
+import type { DirectorCharacterSetupPhaseResult } from "../novelDirectorPipelinePhases";
 import {
   getDirectorStageNodeAdapter,
   type DirectorPlanningStage,
@@ -218,7 +219,7 @@ function createBookContractExecutableModule(
 
 function createCharacterSetupExecutableModule(
   descriptor: WorkflowStepModuleDescriptor,
-): WorkflowStepModule<{ taskId: string; novelId: string; request: DirectorConfirmRequest }, boolean> {
+): WorkflowStepModule<{ taskId: string; novelId: string; request: DirectorConfirmRequest }, DirectorCharacterSetupPhaseResult> {
   return createWorkflowStepModule(
     descriptor,
     async (input) => getDirectorCoreStepRuntime().executeCharacterSetupStep(input),
@@ -296,6 +297,23 @@ function createCharacterSetupExecutableModule(
       completeCriteria: async (_output, context) => {
         const summary = await loadFactBaseSummary(context);
         return summary.book.characterCount > 0;
+      },
+      acceptablePauseCriteria: async (output, context) => {
+        if (output.status !== "waiting_review") {
+          return false;
+        }
+        const { state, novelId } = await loadDirectorModuleState(context);
+        if (
+          state.task.status !== "waiting_approval"
+          || state.task.checkpointType !== "character_setup_required"
+        ) {
+          return false;
+        }
+        const [characters, castOptions] = await Promise.all([
+          getDirectorCoreStepRuntime().getCharacters(novelId),
+          getDirectorCoreStepRuntime().getCharacterCastOptions(novelId),
+        ]);
+        return characters.length === 0 && castOptions.some((option) => option.id === output.optionId);
       },
     },
   );

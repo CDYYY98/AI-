@@ -15,6 +15,7 @@ import type { NovelDirectorPipelineRuntime } from "../novelDirectorPipelineRunti
 import type { NovelDirectorRuntimeOrchestrator } from "../novelDirectorRuntimeOrchestrator";
 import type { DirectorRuntimeService } from "../runtime/DirectorRuntimeService";
 import type { ChapterExecutionProgressInspector } from "../runtime/ChapterExecutionProgressInspector";
+import type { DirectorCharacterSetupPhaseResult } from "../novelDirectorPipelinePhases";
 import { normalizeDirectorAutoExecutionPlan } from "../automation/novelDirectorAutoExecution";
 import {
   resolveStructuredOutlineRecoveryCursor,
@@ -121,6 +122,10 @@ export class DirectorCoreStepModuleRuntime {
     return this.novelContextService.listCharacters(novelId).catch(() => []);
   }
 
+  async getCharacterCastOptions(novelId: string) {
+    return this.characterPreparationService.listCharacterCastOptions(novelId).catch(() => []);
+  }
+
   async getVolumeWorkspace(novelId: string): Promise<VolumePlanDocument | null> {
     return this.pipelineRuntime.loadVolumeWorkspaceForOutline(novelId);
   }
@@ -184,7 +189,7 @@ export class DirectorCoreStepModuleRuntime {
     taskId: string;
     novelId: string;
     request: DirectorConfirmRequest;
-  }): Promise<boolean> {
+  }): Promise<DirectorCharacterSetupPhaseResult> {
     return this.pipelineRuntime.executeCharacterSetupStep(input.taskId, input.novelId, input.request);
   }
 
@@ -268,4 +273,3 @@ export class DirectorCoreStepModuleRuntime {
     });
   }
 }
-

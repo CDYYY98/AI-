@@ -122,7 +122,7 @@ test("director character phase pauses at review checkpoint when cast quality gat
     },
   ];
 
-  const paused = await runDirectorCharacterSetupPhase({
+  const result = await runDirectorCharacterSetupPhase({
     taskId: "task_1",
     novelId: "novel_1",
     request: buildRequest(),
@@ -172,7 +172,8 @@ test("director character phase pauses at review checkpoint when cast quality gat
     },
   });
 
-  assert.equal(paused, true);
+  assert.equal(result.status, "waiting_review");
+  assert.equal(result.optionId, "cast_bad");
   assert.equal(applyCalls, 0);
   assert.equal(autoGenerateCalls, 1);
   const checkpointCall = workflowCalls.find((call) => call.type === "checkpoint");
@@ -187,7 +188,7 @@ test("director character phase reuses an applied cast option instead of regenera
   let autoGenerateCalls = 0;
   let assessmentCalls = 0;
 
-  const resumed = await runDirectorCharacterSetupPhase({
+  const result = await runDirectorCharacterSetupPhase({
     taskId: "task_2",
     novelId: "novel_1",
     request: buildRequest(),
@@ -226,7 +227,7 @@ test("director character phase reuses an applied cast option instead of regenera
     },
   });
 
-  assert.equal(resumed, false);
+  assert.equal(result.status, "already_applied");
   assert.equal(autoGenerateCalls, 0);
   assert.equal(assessmentCalls, 0);
   assert.equal(applyCalls, 0);
@@ -240,7 +241,7 @@ test("director character phase applies an existing draft cast option without reg
   let autoGenerateCalls = 0;
   const draftOption = buildCastOption({ id: "cast_draft", status: "draft" });
 
-  const paused = await runDirectorCharacterSetupPhase({
+  const result = await runDirectorCharacterSetupPhase({
     taskId: "task_3",
     novelId: "novel_1",
     request: buildRequest(),
@@ -284,7 +285,7 @@ test("director character phase applies an existing draft cast option without reg
     },
   });
 
-  assert.equal(paused, false);
+  assert.equal(result.status, "applied");
   assert.equal(autoGenerateCalls, 0);
   assert.equal(applyCalls, 1);
   assert.ok(workflowCalls.some((call) => call.type === "running" && /复用候选角色阵容/.test(call.itemLabel)));
