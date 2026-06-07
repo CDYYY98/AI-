@@ -114,6 +114,7 @@ interface RunPipelineChapterDeps {
 
 const QUALITY_THRESHOLD = { coherence: 80, repetition: 75, engagement: 75 };
 const EMPTY_CONTENT_GENERATION_RETRY_LIMIT = 1;
+const NON_PATCHABLE_REVIEW_ISSUE_CODES = new Set(["acceptance_gate_unavailable"]);
 
 const AUDIT_CATEGORY_MAP: Record<"continuity" | "character" | "plot" | "mode_fit", ReviewIssue["category"]> = {
   continuity: "coherence",
@@ -419,6 +420,18 @@ async function repairDraftContent(input: {
   content: string;
   recoverableFailure?: PipelineRecoverableRepairFailure | null;
 }> {
+  if (!input.forceFullRewrite && shouldDeferNonPatchableReviewRisk(input.runtimePackage, input.issues)) {
+    return {
+      content: input.content,
+      recoverableFailure: {
+        chapterId: input.runtimePackage.chapterId,
+        message: "章节接收判断暂时不可用，正文已保留，后续需要重新审校或人工复查。",
+        repairMode: input.options.repairMode ?? "light_repair",
+        failureTypes: ["review_gate_unavailable"],
+        occurredAt: new Date().toISOString(),
+      },
+    };
+  }
   const issues = input.issues.length > 0
     ? input.issues
     : [{
@@ -453,9 +466,9 @@ async function repairDraftContent(input: {
         provider: input.options.provider,
         model: input.options.model,
         temperature: input.options.temperature,
-          repairMode: activeRepairMode,
-          modeHint,
-        });
+        repairMode: activeRepairMode,
+        modeHint,
+      });
       return {
         content: patched.content,
         recoverableFailure: null,
@@ -504,6 +517,28 @@ async function repairDraftContent(input: {
     content: nextContent || input.content,
     recoverableFailure: null,
   };
+}
+
+function shouldDeferNonPatchableReviewRisk(
+  runtimePackage: ChapterRuntimePackage,
+  issues: ReviewIssue[],
+): boolean {
+  const openIssues = runtimePackage.audit.openIssues ?? [];
+  if (openIssues.length > 0) {
+    return openIssues.every((issue) => typeof issue.code === "string"
+      && NON_PATCHABLE_REVIEW_ISSUE_CODES.has(issue.code));
+  }
+  return issues.length > 0 && issues.every(issueLooksLikeNonPatchableReviewRisk);
+}
+
+function issueLooksLikeNonPatchableReviewRisk(issue: ReviewIssue): boolean {
+  const evidence = issue.evidence.toLowerCase();
+  const fixSuggestion = issue.fixSuggestion.toLowerCase();
+  const combined = `${evidence}\n${fixSuggestion}`;
+  return combined.includes("acceptance_gate_unavailable")
+    || combined.includes("接收闸门未返回可用结构化结果")
+    || combined.includes("章节接收判断不可用")
+    || combined.includes("结构化判断缺失");
 }
 
 function buildRepairBibleFallback(runtimePackage: ChapterRuntimePackage): string {
