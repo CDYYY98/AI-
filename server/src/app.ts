@@ -46,6 +46,7 @@ import titleLibraryRouter from "./routes/titleLibrary";
 import worldRouter from "./routes/world";
 import writingFormulaRouter from "./routes/writingFormula";
 import { novelEventBus, registerNovelEventHandlers } from "./events";
+import { novelSideEffectWorker } from "./events/sideEffects";
 import { bookAnalysisService } from "./services/bookAnalysis/BookAnalysisService";
 import { ragServices } from "./services/rag";
 import { NovelPipelineRuntimeService } from "./services/novel/NovelPipelineRuntimeService";
@@ -231,6 +232,7 @@ function logServerReady(host: string, port: number): void {
 
 function initializeBackgroundServices(): BackgroundServicesHandle {
   ragServices.ragWorker.start();
+  novelSideEffectWorker.start();
   const directorWorker = new DirectorWorker();
   void directorWorker.start().catch((error) => {
     console.error("[director.worker] unexpected stop", error);
@@ -265,6 +267,7 @@ function initializeBackgroundServices(): BackgroundServicesHandle {
   return {
     stop: async () => {
       directorWorker.stop();
+      novelSideEffectWorker.stop();
       ragServices.ragWorker.stop();
       bookAnalysisService.stopWatchdog();
       novelPipelineRuntimeService.stopWatchdog();
