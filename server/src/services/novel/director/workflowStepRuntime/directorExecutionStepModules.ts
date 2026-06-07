@@ -441,6 +441,14 @@ function chapterHasCompletedStage(
   return Array.isArray(chapter.completedStages) && chapter.completedStages.includes(stage);
 }
 
+async function inspectScopedChapterExecutionProgress(context: WorkflowStepExecutionContext) {
+  const { state, novelId, request } = await loadDirectorModuleState(context);
+  return scopeChapterExecutionProgress(
+    state.chapterProgress ?? await getDirectorCoreStepRuntime().inspectChapterExecutionProgress(novelId),
+    resolveChapterExecutionProgressScope({ state, request }),
+  );
+}
+
 export const DIRECTOR_EXECUTION_CONTRACT_SYNC_STEP_MODULE = createChapterExecutionContractSyncModule({
   ...createWorkflowStepDescriptorFromCatalogEntry({
     entry: getWorkflowStepCatalogEntry(DIRECTOR_EXECUTION_CONTRACT_SYNC_STEP_ID),
@@ -471,9 +479,9 @@ export const DIRECTOR_EXECUTION_STEP_MODULES: Record<
       promptAssets: [{ id: "audit.chapter.full", version: "v2" }],
     }),
     inspectFacts: async (context) => {
-      const summary = await loadFactBaseSummary(context);
-      const draftedCount = summary.repair.draftedChapterCount;
-      const reviewedCount = summary.repair.reviewedChapterCount;
+      const progress = await inspectScopedChapterExecutionProgress(context);
+      const draftedCount = progress?.draftedChapterCount ?? 0;
+      const reviewedCount = progress?.chapters?.filter((chapter) => chapterHasCompletedStage(chapter, "audit_completed")).length ?? 0;
       const drafted = { length: draftedCount };
       const reviewed = reviewedCount;
       return {
@@ -506,10 +514,10 @@ export const DIRECTOR_EXECUTION_STEP_MODULES: Record<
       adapter: getDirectorExecutionNodeAdapter("chapter_repair"),
     }),
     inspectFacts: async (context) => {
-      const summary = await loadFactBaseSummary(context);
-      const draftedChapterCount = summary.repair.draftedChapterCount;
-      const reviewedChapterCount = summary.repair.reviewedChapterCount;
-      const needsRepairChapters = summary.repair.needsRepairChapterCount;
+      const progressSummary = await inspectScopedChapterExecutionProgress(context);
+      const draftedChapterCount = progressSummary?.draftedChapterCount ?? 0;
+      const reviewedChapterCount = progressSummary?.chapters?.filter((chapter) => chapterHasCompletedStage(chapter, "audit_completed")).length ?? 0;
+      const needsRepairChapters = progressSummary?.needsRepairChapters ?? 0;
       const hasRepairContext = reviewedChapterCount > 0 || needsRepairChapters > 0;
       const progress = {
         needsRepairChapters: hasRepairContext ? needsRepairChapters : 1,
@@ -630,10 +638,10 @@ export const DIRECTOR_EXECUTION_STEP_MODULES: Record<
       adapter: getDirectorExecutionNodeAdapter("quality_repair"),
     }),
     inspectFacts: async (context) => {
-      const summary = await loadFactBaseSummary(context);
-      const draftedChapterCount = summary.repair.draftedChapterCount;
-      const reviewedChapterCount = summary.repair.reviewedChapterCount;
-      const needsRepairChapters = summary.repair.needsRepairChapterCount;
+      const progressSummary = await inspectScopedChapterExecutionProgress(context);
+      const draftedChapterCount = progressSummary?.draftedChapterCount ?? 0;
+      const reviewedChapterCount = progressSummary?.chapters?.filter((chapter) => chapterHasCompletedStage(chapter, "audit_completed")).length ?? 0;
+      const needsRepairChapters = progressSummary?.needsRepairChapters ?? 0;
       const hasRepairContext = reviewedChapterCount > 0 || needsRepairChapters > 0;
       const progress = {
         needsRepairChapters: hasRepairContext ? needsRepairChapters : 1,
