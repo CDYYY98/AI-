@@ -13,6 +13,7 @@ import {
   buildDirectorAutoExecutionPausedLabel,
   buildDirectorAutoExecutionPausedSummary,
   buildDirectorAutoExecutionScopeLabelFromState,
+  type DirectorAutoExecutionChapterRef,
   type DirectorAutoExecutionRange,
 } from "./novelDirectorAutoExecution";
 import { buildDirectorSessionState } from "../novelDirectorHelpers";
@@ -199,6 +200,7 @@ export async function resolveQualityRepairNoticeAction(
     noticeSummary: string;
     payload?: string | null;
     approveAutoExecutionScope?: boolean;
+    qualityIssueChapter?: DirectorAutoExecutionChapterRef | null;
   },
 ): Promise<{
   action: "auto_continue" | "pause";

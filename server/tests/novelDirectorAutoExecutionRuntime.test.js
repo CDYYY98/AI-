@@ -5,6 +5,9 @@ const {
   NovelDirectorAutoExecutionRuntime,
 } = require("../dist/services/novel/director/automation/novelDirectorAutoExecutionRuntime.js");
 const {
+  buildDirectorAutoExecutionState,
+} = require("../dist/services/novel/director/automation/novelDirectorAutoExecution.js");
+const {
   buildDirectorQualityLoopBudgetWindow,
   buildDirectorQualityLoopIssueSignature,
   recordDirectorQualityLoopBudgetAttempt,
@@ -1197,6 +1200,7 @@ test("runFromReady defers repeated full-book replan loops as quality debt and co
             order: 1,
             generationState: "reviewed",
             chapterStatus: "needs_repair",
+            content: "姝ｆ枃1",
           }),
           withExecutionDetail({
             id: "chapter-2",
@@ -1227,6 +1231,8 @@ test("runFromReady defers repeated full-book replan loops as quality debt and co
             id: jobId,
             status: "succeeded",
             progress: 1,
+            startOrder: order,
+            endOrder: order,
             currentStage: null,
             currentItemLabel: null,
             payload: JSON.stringify({
@@ -1245,6 +1251,8 @@ test("runFromReady defers repeated full-book replan loops as quality debt and co
           id: jobId,
           status: "succeeded",
           progress: 1,
+          startOrder: order,
+          endOrder: order,
           currentStage: null,
           currentItemLabel: null,
           noticeSummary: null,
@@ -1339,6 +1347,42 @@ test("runFromReady defers repeated full-book replan loops as quality debt and co
   assert.equal(calls.some((call) => call[0] === "markTaskFailed"), false);
   const completed = calls.find((call) => call[0] === "recordCheckpoint");
   assert.deepEqual(completed, ["recordCheckpoint", "task-auto-exec", "workflow_completed", [1], [1]]);
+});
+
+test("auto-execution state drops blank chapters from skipped quality debt", () => {
+  const state = buildDirectorAutoExecutionState({
+    range: { startOrder: 1, endOrder: 3, totalChapterCount: 3, firstChapterId: "chapter-1" },
+    chapters: [
+      { id: "chapter-1", order: 1, generationState: "approved", chapterStatus: "completed", content: "chapter 1" },
+      withExecutionDetail({ id: "chapter-2", order: 2, generationState: "planned", chapterStatus: "unplanned", content: "" }),
+      withExecutionDetail({ id: "chapter-3", order: 3, generationState: "planned", chapterStatus: "unplanned", content: "" }),
+    ],
+    plan: {
+      enabled: true,
+      mode: "chapter_range",
+      startOrder: 1,
+      endOrder: 3,
+      totalChapterCount: 3,
+      skippedChapterIds: ["chapter-2"],
+      skippedChapterOrders: [2],
+      qualityDebtChapterIds: ["chapter-2"],
+      qualityDebtChapterOrders: [2],
+      qualityDebtSummaries: [{
+        chapterId: "chapter-2",
+        chapterOrder: 2,
+        reason: "blank quality debt should not be preserved",
+        source: "review_skip",
+        deferredAt: "2026-05-27T00:00:00.000Z",
+      }],
+    },
+  });
+
+  assert.deepEqual(state.skippedChapterIds, []);
+  assert.deepEqual(state.skippedChapterOrders, []);
+  assert.deepEqual(state.qualityDebtChapterIds, []);
+  assert.deepEqual(state.qualityDebtChapterOrders, []);
+  assert.deepEqual(state.qualityDebtSummaries, []);
+  assert.equal(state.nextChapterOrder, 2);
 });
 
 test("runFromReady records replan_required outside AI-driver execution when pipeline completes with replan notice", async () => {
@@ -2217,9 +2261,9 @@ test("runFromReady uses persisted quality budget ledger to defer repeated replan
           withExecutionDetail({
             id: "chapter-6",
             order: 6,
-            generationState: "planned",
-            chapterStatus: "pending_generation",
-            content: "",
+            generationState: "reviewed",
+            chapterStatus: "needs_repair",
+            content: "姝ｆ枃6",
           }),
           withExecutionDetail({
             id: "chapter-7",
@@ -2249,6 +2293,8 @@ test("runFromReady uses persisted quality budget ledger to defer repeated replan
             id: jobId,
             status: "succeeded",
             progress: 1,
+            startOrder: order,
+            endOrder: order,
             currentStage: null,
             currentItemLabel: null,
             payload: JSON.stringify({
@@ -2265,6 +2311,8 @@ test("runFromReady uses persisted quality budget ledger to defer repeated replan
           id: jobId,
           status: "succeeded",
           progress: 1,
+          startOrder: order,
+          endOrder: order,
           currentStage: null,
           currentItemLabel: null,
           noticeSummary: null,

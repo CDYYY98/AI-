@@ -12,6 +12,7 @@ import {
   buildDirectorAutoExecutionPipelineOptions,
   resolveDirectorAutoExecutionRepairMode,
   resolveDirectorAutoExecutionWorkflowState,
+  type DirectorAutoExecutionChapterRef,
   type DirectorAutoExecutionRange,
 } from "./novelDirectorAutoExecution";
 import {
@@ -310,6 +311,7 @@ export class NovelDirectorAutoExecutionRuntime {
         }
 
         if (job.status === "succeeded" && job.noticeSummary?.trim()) {
+          const qualityIssueChapter = await this.resolveQualityIssueChapter(input.novelId, job);
           const noticeAction = await resolveQualityRepairNoticeAction(this.deps, {
             taskId: input.taskId,
             novelId: input.novelId,
@@ -322,6 +324,7 @@ export class NovelDirectorAutoExecutionRuntime {
             noticeSummary: job.noticeSummary.trim(),
             payload: job.payload,
             approveAutoExecutionScope: input.approveAutoExecutionScope,
+            qualityIssueChapter,
           });
           if (
             noticeAction.checkpointType === "replan_required"
@@ -336,6 +339,7 @@ export class NovelDirectorAutoExecutionRuntime {
                 autoExecution,
                 checkpointState: noticeAction.checkpointState,
                 noticeSummary: job.noticeSummary.trim(),
+                qualityIssueChapter,
               })
             if (replanNoticeResult.stopped) {
               return;
@@ -591,6 +595,7 @@ export class NovelDirectorAutoExecutionRuntime {
             state: withCircuitBreakerState(failedAutoExecution, null),
             reason: failureMessage,
             source: failureCircuitBreaker.reason === "replan_loop" ? "replan_loop" : "repair_failure",
+            chapter: await this.resolveQualityIssueChapter(input.novelId, job),
           });
           const ledgerEventService = this.deps.automationLedgerEventService ?? directorAutomationLedgerEventService;
           await ledgerEventService.recordEvent({
@@ -699,6 +704,23 @@ export class NovelDirectorAutoExecutionRuntime {
     await this.deps.novelService.resumePipelineJob(job.id);
     job = await this.deps.novelService.getPipelineJobById(job.id);
     return job;
+  }
+
+  private async resolveQualityIssueChapter(
+    novelId: string,
+    job: NonNullable<PipelineJobSnapshot>,
+  ): Promise<DirectorAutoExecutionChapterRef | null> {
+    const startOrder = typeof job.startOrder === "number" && Number.isFinite(job.startOrder)
+      ? job.startOrder
+      : null;
+    const endOrder = typeof job.endOrder === "number" && Number.isFinite(job.endOrder)
+      ? job.endOrder
+      : null;
+    if (startOrder == null || (endOrder != null && endOrder !== startOrder)) {
+      return null;
+    }
+    const chapters = await this.deps.novelContextService.listChapters(novelId);
+    return chapters.find((chapter) => chapter.order === startOrder) ?? null;
   }
 }
 

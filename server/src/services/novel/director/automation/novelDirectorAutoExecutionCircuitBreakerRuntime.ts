@@ -9,6 +9,7 @@ import {
   buildDirectorAutoExecutionPausedLabel,
   buildDirectorAutoExecutionPausedSummary,
   buildDirectorAutoExecutionScopeLabelFromState,
+  type DirectorAutoExecutionChapterRef,
   type DirectorAutoExecutionRange,
 } from "./novelDirectorAutoExecution";
 import {
@@ -199,6 +200,7 @@ export async function runFullBookAutopilotReplanNotice(input: {
   autoExecution: DirectorAutoExecutionState;
   checkpointState: DirectorAutoExecutionState;
   noticeSummary: string;
+  qualityIssueChapter?: DirectorAutoExecutionChapterRef | null;
 }): Promise<
   | { stopped: true }
   | {
@@ -208,10 +210,14 @@ export async function runFullBookAutopilotReplanNotice(input: {
     decision?: "auto_replan_window" | "defer_and_continue";
   }
 > {
+  const qualityIssueChapterId = input.qualityIssueChapter?.id?.trim() || input.autoExecution.nextChapterId;
+  const qualityIssueChapterOrder = typeof input.qualityIssueChapter?.order === "number"
+    ? input.qualityIssueChapter.order
+    : input.autoExecution.nextChapterOrder;
   const affectedChapterWindow = buildDirectorQualityLoopBudgetWindow({
     autoExecution: input.autoExecution,
-    chapterId: input.autoExecution.nextChapterId,
-    chapterOrder: input.autoExecution.nextChapterOrder,
+    chapterId: qualityIssueChapterId,
+    chapterOrder: qualityIssueChapterOrder,
   });
   const issueSignature = buildDirectorQualityLoopIssueSignature({
     reason: input.noticeSummary,
@@ -236,8 +242,8 @@ export async function runFullBookAutopilotReplanNotice(input: {
       affectedChapterWindow,
       action: "defer_and_continue",
       reason: input.noticeSummary,
-      chapterId: input.autoExecution.nextChapterId,
-      chapterOrder: input.autoExecution.nextChapterOrder,
+      chapterId: qualityIssueChapterId,
+      chapterOrder: qualityIssueChapterOrder,
     });
     const ledgerEventService = input.deps.automationLedgerEventService ?? directorAutomationLedgerEventService;
     const closedCircuitBreaker = buildClosedDirectorCircuitBreakerState(input.autoExecution.circuitBreaker);
@@ -245,6 +251,7 @@ export async function runFullBookAutopilotReplanNotice(input: {
       state: withCircuitBreakerState(budgetResult.state, closedCircuitBreaker),
       reason: input.noticeSummary,
       source: "replan_loop",
+      chapter: input.qualityIssueChapter ?? null,
     });
     await ledgerEventService.recordEvent({
       type: "continue_with_risk",
@@ -258,14 +265,14 @@ export async function runFullBookAutopilotReplanNotice(input: {
       novelId: input.novelId,
       nodeKey: "planner.replan",
       summary: "全书自动成书已暂存重复重规划问题，并继续推进后续章节。",
-      affectedScope: input.autoExecution.nextChapterId
-        ? `chapter:${input.autoExecution.nextChapterId}`
-        : (typeof input.autoExecution.nextChapterOrder === "number" ? `chapter_order:${input.autoExecution.nextChapterOrder}` : null),
+      affectedScope: qualityIssueChapterId
+        ? `chapter:${qualityIssueChapterId}`
+        : (typeof qualityIssueChapterOrder === "number" ? `chapter_order:${qualityIssueChapterOrder}` : null),
       severity: "medium",
       metadata: {
         decision: "defer_and_continue",
         noticeSummary: input.noticeSummary,
-        chapterOrder: input.autoExecution.nextChapterOrder ?? null,
+        chapterOrder: qualityIssueChapterOrder ?? null,
         qualityBudgetEntry: budgetResult.entry,
       },
     }).catch(() => null);
@@ -284,13 +291,13 @@ export async function runFullBookAutopilotReplanNotice(input: {
     affectedChapterWindow,
     action: "window_replan",
     reason: input.noticeSummary,
-    chapterId: input.autoExecution.nextChapterId,
-    chapterOrder: input.autoExecution.nextChapterOrder,
+    chapterId: qualityIssueChapterId,
+    chapterOrder: qualityIssueChapterOrder,
   });
   const replanCircuitBreaker = recordReplanLoopSignal({
     previous: budgetResult.state.circuitBreaker,
-    chapterId: input.autoExecution.nextChapterId,
-    chapterOrder: input.autoExecution.nextChapterOrder,
+    chapterId: qualityIssueChapterId,
+    chapterOrder: qualityIssueChapterOrder,
     message: input.noticeSummary,
   });
   if (isDirectorCircuitBreakerOpen(replanCircuitBreaker)) {
@@ -300,29 +307,30 @@ export async function runFullBookAutopilotReplanNotice(input: {
       state: withCircuitBreakerState(budgetResult.state, closedCircuitBreaker),
       reason: input.noticeSummary,
       source: "replan_loop",
+      chapter: input.qualityIssueChapter ?? null,
     });
     await ledgerEventService.recordEvent({
       type: "continue_with_risk",
       idempotencyKey: [
         input.taskId,
         input.novelId,
-        deferredState.nextChapterId ?? input.autoExecution.nextChapterId ?? "unknown",
-        deferredState.nextChapterOrder ?? input.autoExecution.nextChapterOrder ?? "unknown",
+        qualityIssueChapterId ?? deferredState.nextChapterId ?? "unknown",
+        qualityIssueChapterOrder ?? deferredState.nextChapterOrder ?? "unknown",
         replanCircuitBreaker.replanLoopCount ?? "replan",
       ].join(":"),
       taskId: input.taskId,
       novelId: input.novelId,
       nodeKey: "planner.replan",
       summary: "全书自动成书已暂存重复重规划问题，并继续推进后续章节。",
-      affectedScope: input.autoExecution.nextChapterId
-        ? `chapter:${input.autoExecution.nextChapterId}`
-        : (typeof input.autoExecution.nextChapterOrder === "number" ? `chapter_order:${input.autoExecution.nextChapterOrder}` : null),
+      affectedScope: qualityIssueChapterId
+        ? `chapter:${qualityIssueChapterId}`
+        : (typeof qualityIssueChapterOrder === "number" ? `chapter_order:${qualityIssueChapterOrder}` : null),
       severity: "medium",
       metadata: {
         decision: "defer_and_continue",
         circuitBreaker: replanCircuitBreaker,
         noticeSummary: input.noticeSummary,
-        chapterOrder: input.autoExecution.nextChapterOrder ?? null,
+        chapterOrder: qualityIssueChapterOrder ?? null,
         qualityBudgetEntry: budgetResult.entry,
       },
     }).catch(() => null);
@@ -336,7 +344,7 @@ export async function runFullBookAutopilotReplanNotice(input: {
   if (input.deps.replanNovel) {
     try {
       await input.deps.replanNovel(input.novelId, {
-        chapterId: input.autoExecution.nextChapterId ?? undefined,
+        chapterId: qualityIssueChapterId ?? undefined,
         triggerType: "audit_failure",
         reason: input.noticeSummary,
         provider: input.request.provider,
