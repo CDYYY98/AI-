@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const http = require("node:http");
+const jwt = require("jsonwebtoken");
 const { createApp } = require("../dist/app.js");
 const { AgentTraceStore } = require("../dist/agents/traceStore.js");
 const { creativeHubLangGraph } = require("../dist/creativeHub/CreativeHubLangGraph.js");
@@ -14,6 +15,8 @@ const { ragServices } = require("../dist/services/rag/index.js");
 const { providerBalanceService } = require("../dist/services/settings/ProviderBalanceService.js");
 const { STYLE_EXTRACTION_TIMEOUT_MS_KEY } = require("../dist/services/settings/StyleEngineRuntimeSettingsService.js");
 const { prisma } = require("../dist/db/prisma.js");
+
+const ADMIN_AUTH_HEADER = `Bearer ${jwt.sign({ userId: "test-admin", role: "admin" }, process.env.JWT_SECRET || "ai-novel-dev-secret-change-in-production")}`;
 
 function listen(server) {
   return new Promise((resolve) => {
@@ -543,7 +546,7 @@ test("GET /api/settings/api-keys exposes ollama baseURL and optional-key metadat
   }
 });
 
-test("GET /api/settings/api-keys resolves unsaved provider model from fetched catalog", async () => {
+test("GET /api/settings/api-keys uses lightweight local model metadata", async () => {
   const originalFindMany = prisma.aPIKey.findMany;
   const originalFetch = global.fetch;
   const previousDeepSeekModel = process.env.DEEPSEEK_MODEL;
@@ -562,39 +565,27 @@ test("GET /api/settings/api-keys resolves unsaved provider model from fetched ca
       updatedAt: new Date(),
     },
   ]);
-  global.fetch = async (url) => {
-    const target = String(url);
-    if (target === "https://models.example.com/v1/models") {
-      return new Response(JSON.stringify({
-        data: [{ id: "deepseek-v4-latest" }, { id: "deepseek-reasoner" }],
-      }), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    }
-    return new Response(JSON.stringify({ error: "not mocked" }), {
-      status: 404,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  global.fetch = async () => {
+    throw new Error("api-keys summary must not fetch remote model catalogs");
   };
 
   const app = createApp();
   const server = http.createServer(app);
   const port = await listen(server);
   try {
-    const response = await originalFetch(`http://127.0.0.1:${port}/api/settings/api-keys`);
+    const response = await originalFetch(`http://127.0.0.1:${port}/api/settings/api-keys`, {
+      headers: {
+        Authorization: ADMIN_AUTH_HEADER,
+      },
+    });
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.success, true);
     const deepseek = payload.data.find((item) => item.provider === "deepseek");
     assert.ok(deepseek);
-    assert.equal(deepseek.currentModel, "deepseek-v4-latest");
+    assert.equal(deepseek.currentModel, "deepseek-chat");
     assert.equal(deepseek.isConfigured, true);
-    assert.deepEqual(deepseek.models, ["deepseek-v4-latest", "deepseek-reasoner"]);
+    assert.ok(deepseek.models.includes("deepseek-chat"));
   } finally {
     prisma.aPIKey.findMany = originalFindMany;
     global.fetch = originalFetch;
