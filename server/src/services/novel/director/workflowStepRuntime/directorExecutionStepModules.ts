@@ -35,8 +35,7 @@ import {
   pendingFact,
   readyState,
   requireDirectorRequest,
-  resolveChapterExecutionProgressScope,
-  scopeChapterExecutionProgress,
+  inspectFreshScopedChapterExecutionProgress,
 } from "./directorWorkflowStepShared";
 import {
   DIRECTOR_EXECUTION_CONTRACT_SYNC_STEP_ID,
@@ -60,8 +59,8 @@ function createChapterDraftExecutableModule(
     async (input) => getDirectorCoreStepRuntime().executeChapterDraftStep(input),
     {
       inspectReadiness: async (context) => {
-        const { state, novelId } = await loadDirectorModuleState(context);
-        const chapterProgress = state.chapterProgress ?? await getDirectorCoreStepRuntime().inspectChapterExecutionProgress(novelId);
+        const { novelId } = await loadDirectorModuleState(context);
+        const chapterProgress = await getDirectorCoreStepRuntime().inspectChapterExecutionProgress(novelId);
         const executionChapters = await getDirectorCoreStepRuntime().getExecutionChapters(novelId);
         const syncedChapterCount = executionChapters.filter((chapter) => hasDirectorSyncedChapterExecutionContext(chapter)).length;
         if (syncedChapterCount === 0) {
@@ -81,10 +80,7 @@ function createChapterDraftExecutableModule(
       },
       inspectCompletion: async (context) => {
         const { state, novelId, request } = await loadDirectorModuleState(context);
-        const chapterProgress = scopeChapterExecutionProgress(
-          state.chapterProgress ?? await getDirectorCoreStepRuntime().inspectChapterExecutionProgress(novelId),
-          resolveChapterExecutionProgressScope({ state, request }),
-        );
+        const chapterProgress = await inspectFreshScopedChapterExecutionProgress({ novelId, state, request });
         const draftedChapterCount = chapterProgress?.draftedChapterCount ?? 0;
         const totalChapters = chapterProgress?.totalChapters ?? 0;
         return totalChapters > 0 && draftedChapterCount >= totalChapters
@@ -133,6 +129,27 @@ function createChapterDraftExecutableModule(
           ? await getDirectorCoreStateReader().readByTaskId(context.taskId).catch(() => null)
           : null;
         const observedState = freshState ?? state;
+        const progress = await inspectFreshScopedChapterExecutionProgress({ novelId, state: observedState, request });
+        const hasObservedDraft = Boolean(
+          progress
+          && progress.totalChapters > 0
+          && progress.draftedChapterCount > 0,
+        );
+        const hasCompletedDraftScope = Boolean(
+          progress
+          && progress.totalChapters > 0
+          && progress.draftedChapterCount >= progress.totalChapters,
+        );
+        if (!hasObservedDraft) {
+          return {
+            valid: false,
+            reason: "Chapter execution did not produce observable draft content.",
+            evidence: {
+              draftedChapterCount: progress?.draftedChapterCount ?? 0,
+              totalChapters: progress?.totalChapters ?? 0,
+            },
+          };
+        }
         if (observedState.task.status === "waiting_approval" && observedState.task.checkpointType === "replan_required") {
           return {
             valid: false,
@@ -141,7 +158,7 @@ function createChapterDraftExecutableModule(
               || "章节正文已生成，但本章职责与后续计划失配，需要先处理质量修复 / 重规划。",
           };
         }
-        if (observedState.task.status === "failed" || observedState.task.status === "cancelled") {
+        if ((observedState.task.status === "failed" || observedState.task.status === "cancelled") && !hasCompletedDraftScope) {
           const reason = observedState.task.lastError?.trim()
             || observedState.task.checkpointSummary?.trim()
             || "Chapter execution stopped before completing the draft step.";
@@ -150,13 +167,12 @@ function createChapterDraftExecutableModule(
             reason,
           };
         }
-        const progress = scopeChapterExecutionProgress(
-          observedState.chapterProgress ?? await getDirectorCoreStepRuntime().inspectChapterExecutionProgress(novelId),
-          resolveChapterExecutionProgressScope({ state: observedState, request }),
-        );
         return {
-          valid: Boolean(progress && progress.totalChapters > 0),
-          reason: progress?.totalChapters ? undefined : "Chapter execution did not produce observable chapter progress.",
+          valid: true,
+          evidence: {
+            draftedChapterCount: progress?.draftedChapterCount ?? 0,
+            totalChapters: progress?.totalChapters ?? 0,
+          },
         };
       },
       commit: async (_output, context) => {
@@ -177,10 +193,7 @@ function createChapterDraftExecutableModule(
       },
       inspectProgress: async (context) => {
         const { state, novelId, request } = await loadDirectorModuleState(context);
-        const progress = scopeChapterExecutionProgress(
-          state.chapterProgress ?? await getDirectorCoreStepRuntime().inspectChapterExecutionProgress(novelId),
-          resolveChapterExecutionProgressScope({ state, request }),
-        );
+        const progress = await inspectFreshScopedChapterExecutionProgress({ novelId, state, request });
         if (!progress || progress.totalChapters === 0) {
           return buildSimpleProgress({
             status: "not_started",
@@ -229,10 +242,7 @@ function createChapterDraftExecutableModule(
       },
       recover: async (context) => {
         const { novelId, state, request } = await loadDirectorModuleState(context);
-        const progress = scopeChapterExecutionProgress(
-          state.chapterProgress ?? await getDirectorCoreStepRuntime().inspectChapterExecutionProgress(novelId),
-          resolveChapterExecutionProgressScope({ state, request }),
-        );
+        const progress = await inspectFreshScopedChapterExecutionProgress({ novelId, state, request });
         const resumeChapterOrder = progress?.activeChapterOrder ?? progress?.currentChapterOrder;
         const resumeFrom = resumeChapterOrder
           ? `chapter:${resumeChapterOrder}`
@@ -255,10 +265,7 @@ function createChapterDraftExecutableModule(
       },
       completeCriteria: async (_output, context) => {
         const { state, novelId, request } = await loadDirectorModuleState(context);
-        const progress = scopeChapterExecutionProgress(
-          state.chapterProgress ?? await getDirectorCoreStepRuntime().inspectChapterExecutionProgress(novelId),
-          resolveChapterExecutionProgressScope({ state, request }),
-        );
+        const progress = await inspectFreshScopedChapterExecutionProgress({ novelId, state, request });
         return Boolean(
           progress
           && progress.totalChapters > 0
@@ -454,10 +461,7 @@ async function isAutoQualityReviewDisabled(context: WorkflowStepExecutionContext
 
 async function inspectScopedChapterExecutionProgress(context: WorkflowStepExecutionContext) {
   const { state, novelId, request } = await loadDirectorModuleState(context);
-  return scopeChapterExecutionProgress(
-    state.chapterProgress ?? await getDirectorCoreStepRuntime().inspectChapterExecutionProgress(novelId),
-    resolveChapterExecutionProgressScope({ state, request }),
-  );
+  return inspectFreshScopedChapterExecutionProgress({ novelId, state, request });
 }
 
 export const DIRECTOR_EXECUTION_CONTRACT_SYNC_STEP_MODULE = createChapterExecutionContractSyncModule({

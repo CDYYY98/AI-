@@ -174,6 +174,18 @@ export function scopeChapterExecutionProgress(
   };
 }
 
+export async function inspectFreshScopedChapterExecutionProgress(input: {
+  novelId: string;
+  state: Awaited<ReturnType<DirectorFactSummaryService["getState"]>>;
+  request?: DirectorConfirmRequest | null;
+}): Promise<DirectorChapterExecutionProgressSummary | null> {
+  const progress = await getDirectorCoreStepRuntime().inspectChapterExecutionProgress(input.novelId);
+  return scopeChapterExecutionProgress(
+    progress,
+    resolveChapterExecutionProgressScope({ state: input.state, request: input.request ?? null }),
+  );
+}
+
 export function getCandidateStageMode(stage: DirectorCandidateStageNode): string | null {
   switch (stage) {
     case "candidate_generation":
