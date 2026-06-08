@@ -10,6 +10,7 @@ import { buildNovelEditResumeTarget } from "../../workflow/novelWorkflow.shared"
 import {
   buildDirectorAutoExecutionCompletedLabel,
   buildDirectorAutoExecutionCompletedSummary,
+  buildDirectorAutoExecutionDeferredQualityState,
   buildDirectorAutoExecutionPausedLabel,
   buildDirectorAutoExecutionPausedSummary,
   buildDirectorAutoExecutionScopeLabelFromState,
@@ -201,6 +202,7 @@ export async function resolveQualityRepairNoticeAction(
     payload?: string | null;
     approveAutoExecutionScope?: boolean;
     qualityIssueChapter?: DirectorAutoExecutionChapterRef | null;
+    skipCurrentQualityRepair?: boolean;
   },
 ): Promise<{
   action: "auto_continue" | "pause";
@@ -232,6 +234,10 @@ export async function resolveQualityRepairNoticeAction(
     && qualityRepairRisk.autoContinuable
     && isAiDriverExecution
     && hasQualityAlertDetails;
+  const canSkipCurrentQualityRepair = Boolean(
+    input.skipCurrentQualityRepair
+    && isAiDriverExecution,
+  );
   const canContinueAfterExplicitApproval = Boolean(
     input.approveAutoExecutionScope
     && checkpointType === "chapter_batch_ready"
@@ -264,6 +270,20 @@ export async function resolveQualityRepairNoticeAction(
       action: "auto_continue",
       checkpointType,
       checkpointState,
+      qualityRepairRisk,
+    };
+  }
+
+  if (canSkipCurrentQualityRepair) {
+    return {
+      action: "auto_continue",
+      checkpointType,
+      checkpointState: buildDirectorAutoExecutionDeferredQualityState({
+        state: checkpointState,
+        reason: input.noticeSummary,
+        source: "review_skip",
+        chapter: input.qualityIssueChapter,
+      }),
       qualityRepairRisk,
     };
   }

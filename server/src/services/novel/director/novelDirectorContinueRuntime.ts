@@ -167,6 +167,7 @@ export class NovelDirectorContinueRuntime {
     previousFailureMessage?: string | null;
     allowSkipReviewBlockedChapter?: boolean;
     approveAutoExecutionScope: boolean;
+    skipCurrentQualityRepair?: boolean;
   }): Promise<void> {
     const adapter = getDirectorExecutionNodeAdapter("chapter_execution");
     const snapshot = await this.deps.directorRuntime.getSnapshot(input.taskId).catch(() => null);
@@ -192,6 +193,7 @@ export class NovelDirectorContinueRuntime {
             previousFailureMessage: input.previousFailureMessage,
             allowSkipReviewBlockedChapter: input.allowSkipReviewBlockedChapter,
             approveAutoExecutionScope: input.approveAutoExecutionScope,
+            skipCurrentQualityRepair: input.skipCurrentQualityRepair,
           });
         },
       },
@@ -271,7 +273,8 @@ export class NovelDirectorContinueRuntime {
       throw new Error("自动导演任务缺少恢复所需上下文。");
     }
 
-    const requestedAutoExecutionContinue = continuationMode === "auto_execute_range";
+    const requestedSkipQualityRepair = continuationMode === "skip_quality_repair";
+    const requestedAutoExecutionContinue = continuationMode === "auto_execute_range" || requestedSkipQualityRepair;
     const baseRunMode = normalizeDirectorRunMode(directorInput.runMode ?? fallbackRunMode);
     const runMode = requestedAutoExecutionContinue && !isDirectorAutoExecutionRunMode(baseRunMode)
       ? "auto_to_execution"
@@ -343,6 +346,7 @@ export class NovelDirectorContinueRuntime {
             previousFailureMessage: row.lastError ?? null,
             allowSkipReviewBlockedChapter: canSkipReviewBlockedChapter,
             approveAutoExecutionScope: requestedAutoExecutionContinue || isFullBookAutopilot,
+            skipCurrentQualityRepair: requestedSkipQualityRepair,
           });
           return;
         }
@@ -356,6 +360,7 @@ export class NovelDirectorContinueRuntime {
           previousFailureMessage: row.lastError ?? null,
           allowSkipReviewBlockedChapter: canSkipReviewBlockedChapter,
           approveAutoExecutionScope: requestedAutoExecutionContinue || isFullBookAutopilot,
+          skipCurrentQualityRepair: requestedSkipQualityRepair,
         });
       });
       return;

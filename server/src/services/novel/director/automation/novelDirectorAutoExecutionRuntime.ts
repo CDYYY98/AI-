@@ -67,6 +67,7 @@ export class NovelDirectorAutoExecutionRuntime {
     previousFailureMessage?: string | null;
     allowSkipReviewBlockedChapter?: boolean;
     approveAutoExecutionScope?: boolean;
+    skipCurrentQualityRepair?: boolean;
   }): Promise<void> {
     let { range, autoExecution, pipelineJobId } = await prepareRequestedAutoExecutionState(this.deps, {
       novelId: input.novelId,
@@ -311,7 +312,7 @@ export class NovelDirectorAutoExecutionRuntime {
         }
 
         if (job.status === "succeeded" && job.noticeSummary?.trim()) {
-          const qualityIssueChapter = await this.resolveQualityIssueChapter(input.novelId, job);
+          const qualityIssueChapter = await this.resolveQualityIssueChapter(input.novelId, job, autoExecution);
           const noticeAction = await resolveQualityRepairNoticeAction(this.deps, {
             taskId: input.taskId,
             novelId: input.novelId,
@@ -325,6 +326,7 @@ export class NovelDirectorAutoExecutionRuntime {
             payload: job.payload,
             approveAutoExecutionScope: input.approveAutoExecutionScope,
             qualityIssueChapter,
+            skipCurrentQualityRepair: input.skipCurrentQualityRepair,
           });
           if (
             noticeAction.checkpointType === "replan_required"
@@ -595,7 +597,7 @@ export class NovelDirectorAutoExecutionRuntime {
             state: withCircuitBreakerState(failedAutoExecution, null),
             reason: failureMessage,
             source: failureCircuitBreaker.reason === "replan_loop" ? "replan_loop" : "repair_failure",
-            chapter: await this.resolveQualityIssueChapter(input.novelId, job),
+            chapter: await this.resolveQualityIssueChapter(input.novelId, job, autoExecution),
           });
           const ledgerEventService = this.deps.automationLedgerEventService ?? directorAutomationLedgerEventService;
           await ledgerEventService.recordEvent({
@@ -709,6 +711,7 @@ export class NovelDirectorAutoExecutionRuntime {
   private async resolveQualityIssueChapter(
     novelId: string,
     job: NonNullable<PipelineJobSnapshot>,
+    fallbackState?: DirectorAutoExecutionState | null,
   ): Promise<DirectorAutoExecutionChapterRef | null> {
     const startOrder = typeof job.startOrder === "number" && Number.isFinite(job.startOrder)
       ? job.startOrder
@@ -716,11 +719,15 @@ export class NovelDirectorAutoExecutionRuntime {
     const endOrder = typeof job.endOrder === "number" && Number.isFinite(job.endOrder)
       ? job.endOrder
       : null;
-    if (startOrder == null || (endOrder != null && endOrder !== startOrder)) {
+    const fallbackOrder = typeof fallbackState?.nextChapterOrder === "number"
+      ? fallbackState.nextChapterOrder
+      : null;
+    const targetOrder = startOrder ?? fallbackOrder;
+    if (targetOrder == null || (endOrder != null && startOrder != null && endOrder !== startOrder)) {
       return null;
     }
     const chapters = await this.deps.novelContextService.listChapters(novelId);
-    return chapters.find((chapter) => chapter.order === startOrder) ?? null;
+    return chapters.find((chapter) => chapter.order === targetOrder) ?? null;
   }
 }
 

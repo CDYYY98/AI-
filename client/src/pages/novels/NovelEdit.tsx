@@ -86,6 +86,7 @@ import { canCancelDirectorTask, getCandidateSelectionLink } from "@/lib/novelWor
 import { syncAutoDirectorTaskCache } from "@/lib/taskQueryCache";
 import {
   buildContinueAutoExecutionActionLabel,
+  buildSkipQualityRepairActionLabel,
   buildTakeoverDescription,
   buildTakeoverTitle,
   formatTakeoverCheckpoint,
@@ -1021,13 +1022,13 @@ export default function NovelEdit() {
     },
   });
   const continueAutoExecutionMutation = useMutation({
-    mutationFn: async (input?: { directorTaskId?: string }) => {
+    mutationFn: async (input?: { directorTaskId?: string; continuationMode?: "auto_execute_range" | "skip_quality_repair" }) => {
       const targetTaskId = input?.directorTaskId || actionTargetDirectorTaskId;
       if (!targetTaskId) {
         throw new Error("当前没有可继续自动执行的自动导演任务。");
       }
       return continueNovelWorkflow(targetTaskId, {
-        continuationMode: "auto_execute_range",
+        continuationMode: input?.continuationMode ?? "auto_execute_range",
       });
     },
     onSuccess: async (response, input) => {
@@ -1035,7 +1036,7 @@ export default function NovelEdit() {
       const targetTask = targetTaskId === visibleDirectorTask?.id ? visibleDirectorTask : activeAutoDirectorTask;
       void invalidateAutoDirectorTaskState(response.data?.taskId ?? targetTaskId);
       const feedback = resolveWorkflowContinuationFeedback(response.data, {
-        mode: "auto_execute_range",
+        mode: input?.continuationMode ?? "auto_execute_range",
         scopeLabel: activeAutoExecutionScopeLabel,
       });
       if (feedback.tone === "error") {
@@ -1053,7 +1054,7 @@ export default function NovelEdit() {
   const continueProjectedDirectorActionMutation = useMutation({
     mutationFn: async (input: {
       taskId: string;
-      mode?: "resume" | "auto_execute_range";
+      mode?: "resume" | "auto_execute_range" | "skip_quality_repair";
     }) => continueNovelWorkflow(
       input.taskId,
       input.mode ? { continuationMode: input.mode } : undefined,
@@ -1455,9 +1456,18 @@ export default function NovelEdit() {
       });
     } else if (mode === "action_required" && task.checkpointType === "replan_required") {
       actions.push({
+        label: buildSkipQualityRepairActionLabel(autoExecutionScopeLabel, continueAutoExecutionMutation.isPending),
+        onClick: () => continueAutoExecutionMutation.mutate({
+          directorTaskId: task.id,
+          continuationMode: "skip_quality_repair",
+        }),
+        variant: "default",
+        disabled: continueAutoExecutionMutation.isPending,
+      });
+      actions.push({
         label: "打开质量修复",
         onClick: () => openQualityRepair(task),
-        variant: "default",
+        variant: "outline",
       });
     } else if (mode === "waiting") {
       actions.push({
@@ -1718,10 +1728,20 @@ export default function NovelEdit() {
         variant: "default",
       });
     } else if (task.status === "waiting_approval" && task.checkpointType === "replan_required") {
+      const autoExecutionScopeLabel = resolveAutoExecutionScopeLabel(task);
+      actions.push({
+        label: buildSkipQualityRepairActionLabel(autoExecutionScopeLabel, continueAutoExecutionMutation.isPending),
+        onClick: () => continueAutoExecutionMutation.mutate({
+          directorTaskId: task.id,
+          continuationMode: "skip_quality_repair",
+        }),
+        variant: "default",
+        disabled: continueAutoExecutionMutation.isPending,
+      });
       actions.push({
         label: "打开质量修复",
         onClick: () => openQualityRepair(task),
-        variant: "default",
+        variant: "outline",
       });
     } else if (
       task.status === "waiting_approval"
