@@ -74,6 +74,9 @@ const {
 const {
   directorPlanBlueprintSchema,
 } = require("../dist/services/novel/director/novelDirectorSchemas.js");
+const {
+  directorIdeaInspirationSchema,
+} = require("../dist/prompting/prompts/novel/ideaInspiration.promptSchemas.js");
 
 const promptKey = (asset) => `${asset.id}@${asset.version}`;
 
@@ -92,6 +95,7 @@ test("prompt registry exposes versioned planning assets", () => {
     "planner.chapter.plan@v1",
     "novel.director.candidates@v1",
     "novel.director.candidate_patch@v1",
+    "novel.director.idea_inspiration@v1",
     "novel.director.blueprint@v1",
     "novel.character.castOptions@v2",
     "novel.character.castOptions.repair@v1",
@@ -160,6 +164,27 @@ test("prompt registry resolves style prompts by their declared asset versions", 
   ]) {
     assert.equal(getRegisteredPromptAsset(asset.id, asset.version), asset);
   }
+});
+
+test("director idea inspiration prompt requires exactly five ideas", () => {
+  const validIdea = {
+    angle: "爽点强钩子",
+    text: "底层杂役在宗门清算当晚捡到一枚会记录仇人弱点的残破玉简，被迫用最小的谎言换来第一次公开翻盘机会。",
+    tags: ["底层杂役", "当众翻盘"],
+  };
+  assert.equal(directorIdeaInspirationSchema.parse({
+    ideas: Array.from({ length: 5 }, (_, index) => ({
+      ...validIdea,
+      angle: `方向${index + 1}`,
+    })),
+  }).ideas.length, 5);
+
+  assert.throws(() => directorIdeaInspirationSchema.parse({
+    ideas: Array.from({ length: 4 }, (_, index) => ({
+      ...validIdea,
+      angle: `方向${index + 1}`,
+    })),
+  }));
 });
 
 test("character cast prompt hardens real-name constraints and required gender output", () => {

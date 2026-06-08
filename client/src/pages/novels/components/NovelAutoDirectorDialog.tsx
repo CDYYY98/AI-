@@ -63,6 +63,7 @@ import {
 } from "./directorCandidateSelectionHandlers";
 import { AUTO_DIRECTOR_MOBILE_CLASSES } from "@/mobile/autoDirector";
 import { useNovelAutoDirectorCandidateMutations } from "./useNovelAutoDirectorCandidateMutations";
+import { useDirectorIdeaInspirations } from "./autoDirector/useDirectorIdeaInspirations";
 
 interface NovelAutoDirectorDialogProps {
   basicForm: NovelBasicFormState;
@@ -209,6 +210,16 @@ export default function NovelAutoDirectorDialog({
     }),
     [directorBasicForm.styleTone, selectedStyleProfile],
   );
+  const ideaInspiration = useDirectorIdeaInspirations({
+    basicForm: directorBasicForm,
+    genreOptions,
+    worldOptions,
+    idea,
+    llm,
+    runMode,
+    selectedStyleProfileId,
+    onIdeaChange: setIdea,
+  });
   const directorTaskQuery = useQuery({
     queryKey: queryKeys.tasks.detail("novel_workflow", workflowTaskId || "none"),
     queryFn: () => getTaskDetail("novel_workflow", workflowTaskId),
@@ -591,6 +602,10 @@ export default function NovelAutoDirectorDialog({
                 worldOptions={worldOptions}
                 idea={idea}
                 onIdeaChange={setIdea}
+                ideaInspirations={ideaInspiration.ideas}
+                isGeneratingIdeaInspirations={ideaInspiration.isGenerating}
+                onGenerateIdeaInspirations={ideaInspiration.generate}
+                onUseIdeaInspiration={ideaInspiration.useIdea}
                 runMode={runMode}
                 runModeOptions={RUN_MODE_OPTIONS}
                 onRunModeChange={setRunMode}

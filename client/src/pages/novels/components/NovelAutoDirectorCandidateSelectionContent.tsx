@@ -1,4 +1,4 @@
-import type { DirectorRunMode } from "@ai-novel/shared/types/novelDirector";
+import type { DirectorIdeaInspiration, DirectorRunMode } from "@ai-novel/shared/types/novelDirector";
 import type {
   DirectorAutoApprovalGroup,
   DirectorAutoApprovalPoint,
@@ -14,6 +14,10 @@ interface NovelAutoDirectorCandidateSelectionContentProps {
   worldOptions: Array<{ id: string; name: string }>;
   idea: string;
   onIdeaChange: (value: string) => void;
+  ideaInspirations: DirectorIdeaInspiration[];
+  isGeneratingIdeaInspirations: boolean;
+  onGenerateIdeaInspirations: () => void;
+  onUseIdeaInspiration: (text: string) => void;
   runMode: DirectorRunMode;
   runModeOptions: Array<{ value: DirectorRunMode; label: string; description: string }>;
   onRunModeChange: (value: DirectorRunMode) => void;
@@ -44,6 +48,10 @@ export default function NovelAutoDirectorCandidateSelectionContent({
   worldOptions,
   idea,
   onIdeaChange,
+  ideaInspirations,
+  isGeneratingIdeaInspirations,
+  onGenerateIdeaInspirations,
+  onUseIdeaInspiration,
   runMode,
   runModeOptions,
   onRunModeChange,
@@ -74,6 +82,10 @@ export default function NovelAutoDirectorCandidateSelectionContent({
       worldOptions={worldOptions}
       idea={idea}
       onIdeaChange={onIdeaChange}
+      ideaInspirations={ideaInspirations}
+      isGeneratingIdeaInspirations={isGeneratingIdeaInspirations}
+      onGenerateIdeaInspirations={onGenerateIdeaInspirations}
+      onUseIdeaInspiration={onUseIdeaInspiration}
       runMode={runMode}
       runModeOptions={runModeOptions}
       onRunModeChange={onRunModeChange}

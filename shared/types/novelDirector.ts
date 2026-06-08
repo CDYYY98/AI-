@@ -576,6 +576,24 @@ export interface DirectorCandidatesRequest extends DirectorProjectContextInput, 
   workflowTaskId?: string;
 }
 
+export interface DirectorIdeaInspirationRequest extends DirectorProjectContextInput, DirectorLLMOptions {
+  currentIdea?: string;
+  genreLabel?: string;
+  primaryStoryModeLabel?: string;
+  secondaryStoryModeLabel?: string;
+  worldName?: string;
+}
+
+export interface DirectorIdeaInspiration {
+  angle: string;
+  text: string;
+  tags: string[];
+}
+
+export interface DirectorIdeaInspirationsResponse {
+  ideas: DirectorIdeaInspiration[];
+}
+
 export interface DirectorRefinementRequest extends DirectorProjectContextInput, DirectorLLMOptions {
   idea: string;
   previousBatches: DirectorCandidateBatch[];
