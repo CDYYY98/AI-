@@ -74,7 +74,7 @@ function normalizeWorldStructureSectionPayload(
   value: z.infer<typeof worldStructureSectionOutputSchema>,
   input: WorldStructureSectionPromptInput,
 ): z.infer<typeof worldStructureSectionOutputSchema> {
-  const arraySections = new Set(["factions", "locations"]);
+  const arraySections = new Set(["locations"]);
   const shouldReturnArray = arraySections.has(input.section);
 
   if (shouldReturnArray) {
@@ -86,6 +86,12 @@ function normalizeWorldStructureSectionPayload(
 
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`world.structure.generate 在 section=${input.section} 时必须返回对象。`);
+  }
+  if (input.section === "factions") {
+    const record = value as Record<string, unknown>;
+    if (!Array.isArray(record.factions) && !Array.isArray(record.forces)) {
+      throw new Error("world.structure.generate 在 section=factions 时必须返回包含 factions 或 forces 数组的对象。");
+    }
   }
   return value;
 }

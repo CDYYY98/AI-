@@ -55,6 +55,9 @@ const {
   worldDraftRefineAlternativesPrompt,
 } = require("../dist/prompting/prompts/world/worldDraft.prompts.js");
 const {
+  worldStructureSectionPrompt,
+} = require("../dist/prompting/prompts/world/world.prompts.js");
+const {
   createVolumeStrategyPrompt,
 } = require("../dist/prompting/prompts/novel/volume/strategy.prompts.js");
 const {
@@ -962,6 +965,40 @@ test("world draft refine alternatives post validator enforces exact alternative 
     currentValue: "原始背景",
     count: 2,
   }));
+});
+
+test("world structure section prompt accepts factions object and rejects array output", () => {
+  const input = {
+    section: "factions",
+    promptSource: "势力：守夜人议会与泰坦星团对抗",
+    currentStructure: {},
+    currentBindingSupport: {},
+  };
+
+  const accepted = worldStructureSectionPrompt.postValidate({
+    factions: [
+      {
+        id: "faction-1",
+        name: "守夜人议会",
+        position: "压制旧日污染",
+      },
+    ],
+    forces: [
+      {
+        id: "force-1",
+        name: "守夜人前线小组",
+        factionId: "faction-1",
+      },
+    ],
+  }, input);
+
+  assert.equal(Array.isArray(accepted), false);
+  assert.throws(() => worldStructureSectionPrompt.postValidate([
+    { id: "faction-1", name: "守夜人议会" },
+  ], input), /section=factions/);
+  assert.throws(() => worldStructureSectionPrompt.postValidate({
+    summary: "缺少 factions 和 forces 数组",
+  }, input), /factions 或 forces/);
 });
 
 test("runStructuredPrompt forwards repair policy and context telemetry", async () => {
