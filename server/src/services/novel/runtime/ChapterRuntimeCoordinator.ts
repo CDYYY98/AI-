@@ -18,6 +18,7 @@ import { ChapterArtifactSyncService } from "./ChapterArtifactSyncService";
 import { GenerationContextAssembler } from "./GenerationContextAssembler";
 import type { StyleReviewResult } from "./PostGenerationStyleReviewRunner";
 import { ChapterAcceptanceAssessmentService } from "./ChapterAcceptanceAssessmentService";
+import { ChapterAcceptanceGateCacheService } from "./ChapterAcceptanceGateCacheService";
 import { ChapterRuntimeReadinessService } from "./ChapterRuntimeReadinessService";
 import type { ChapterAcceptanceAssessmentOutput } from "../../../prompting/prompts/novel/chapterAcceptance.prompts";
 import { chapterRuntimeRequestSchema, type ChapterRuntimeRequestInput } from "./chapterRuntimeSchema";
@@ -269,7 +270,7 @@ export class ChapterRuntimeCoordinator {
       artifactSyncService,
       auditService: deps.auditService ?? auditService,
       plannerService: deps.plannerService ?? plannerService,
-      acceptanceAssessmentService: deps.acceptanceAssessmentService ?? new ChapterAcceptanceAssessmentService(),
+      acceptanceAssessmentService: deps.acceptanceAssessmentService ?? new ChapterAcceptanceGateCacheService(),
       readinessService: deps.readinessService ?? new ChapterRuntimeReadinessService(),
       agentRuntime: deps.agentRuntime,
       ensureNovelCharacters: deps.ensureNovelCharacters ?? this.ensureNovelCharacters.bind(this),

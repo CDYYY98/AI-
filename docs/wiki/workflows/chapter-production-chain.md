@@ -25,6 +25,7 @@
 - 章节合同和 sceneCards 可作为规划、审校、诊断和局部修复辅助资产，不驱动默认正文生成。
 - 正文生成前只做最低可写性检查：章节存在、人物可用、上下文包可组装、任务目标可解释。
 - 生成后用一次结构化接收闸门判断是否可继续、是否需要局部修文、是否需要人工确认。
+- 接收闸门成功结果可以按 `novelId + chapterId + contentHash + model request` 写入 `ChapterArtifactSyncCheckpoint` 复用；只缓存可复用成功结果，`acceptance_gate_unavailable` 等临时系统兜底不得缓存，避免一次不可用变成长期判断。
 - 章节热路径必须维护统一的章节义务合同：`mustHitNow`、`mustPreserve`、`requiredPayoffTouches`、`requiredCharacterAppearances`、`requiredGoalChanges`、`canDefer`、`forbiddenCrossings`。writer、接收闸门、局部修复和重规划判断都应消费同一份合同，避免规划、写作和审核各自解释章节职责。
 - 章节修复、审阅和上下文组装必须兼容旧运行记录中的章节写作上下文。旧 `chapterWriteContext` 如果缺少新增的 `obligationContract`，运行时应补齐空合同，而不是让修复流崩溃；补齐后仍由当前章节任务、角色职责、伏笔账本和资源状态重新组织审阅与修复上下文。
 - 章节义务上下文的结构化提醒不能挤掉高风险资源和逾期伏笔。审阅与修复上下文应保留资源不可用、资源需确认、urgent/overdue payoff 等关键信号，防止 AI 修文在缺少约束的情况下继续使用失效道具或忽略必须兑现的压力。
@@ -66,6 +67,7 @@
 
 - 一章生成耗时异常：检查是否又把多个 LLM 后处理塞回热路径。
 - 同一章重复同步账本：检查 content hash checkpoint 是否生效。
+- 同一章、同正文、同模型参数反复触发接收审校：检查 `quality_gate_acceptance` checkpoint 是否写入成功，以及结果是否因为 `acceptance_gate_unavailable` 被正确跳过缓存。
 - 修复循环：检查自动修文次数是否被限制，失败是否落到可恢复状态，并确认自动导演质量预算是否已经从局部修复升级到整章修复或重规划。
 - `chapter.draft.write 未满足其完成标准` 高频出现：先查 runtime package 的 `failureClassification` 和 `obligationCoverage`。如果 root cause 是 `draft_obligation_unmet`，应优先检查接收闸门输出的缺失义务和 patch repair；如果是 `replan_required`，检查是否存在单章职责过载或邻章分工失配。
 - 章节反复要求重规划：检查 `rolling_window_review` 的原因是否只来自生成前的紧急 payoff 或 `advance_payoff`。如果审计分数可通过、正文和 artifact delta 已经体现推进，但 runtime package 仍推荐重规划，说明重规划推荐读取了写前状态而不是写后失败证据。
@@ -75,6 +77,7 @@
 ## 相关模块
 
 - `server/src/services/novel/runtime/ChapterRuntimeCoordinator.ts`
+- `server/src/services/novel/runtime/ChapterAcceptanceGateCacheService.ts`
 - `server/src/services/novel/runtime/ChapterArtifactDeltaService.ts`
 - `server/src/services/novel/production/`
 - `server/src/prompting/prompts/novel/`
