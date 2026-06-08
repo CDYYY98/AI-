@@ -130,23 +130,25 @@ function createChapterDraftExecutableModule(
           : null;
         const observedState = freshState ?? state;
         const progress = await inspectFreshScopedChapterExecutionProgress({ novelId, state: observedState, request });
-        const hasObservedDraft = Boolean(
-          progress
-          && progress.totalChapters > 0
-          && progress.draftedChapterCount > 0,
-        );
+        const hasObservedDraft = Boolean(progress && progress.totalChapters > 0 && progress.draftedChapterCount > 0);
         const hasCompletedDraftScope = Boolean(
-          progress
-          && progress.totalChapters > 0
-          && progress.draftedChapterCount >= progress.totalChapters,
+          progress && progress.totalChapters > 0 && progress.draftedChapterCount >= progress.totalChapters,
         );
         if (!hasObservedDraft) {
+          const stopDetail = observedState.task.lastError?.trim()
+            || observedState.task.checkpointSummary?.trim()
+            || null;
           return {
             valid: false,
-            reason: "Chapter execution did not produce observable draft content.",
+            reason: stopDetail
+              ? `Chapter execution did not produce observable draft content（实际中断原因：${stopDetail}）。`
+              : "Chapter execution did not produce observable draft content.",
             evidence: {
               draftedChapterCount: progress?.draftedChapterCount ?? 0,
               totalChapters: progress?.totalChapters ?? 0,
+              taskStatus: observedState.task.status,
+              checkpointType: observedState.task.checkpointType ?? null,
+              lastError: observedState.task.lastError ?? null,
             },
           };
         }

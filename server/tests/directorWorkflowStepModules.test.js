@@ -372,6 +372,57 @@ test("chapter draft validation trusts fresh draft facts over stale failed task s
   assert.equal(validation.evidence.totalChapters, 1);
 });
 
+test("chapter draft validation reports stop reason when no draft is saved", async (t) => {
+  const originalFindMany = prisma.chapter.findMany;
+  prisma.chapter.findMany = async () => [
+    {
+      id: "chapter-1",
+      order: 1,
+      title: "Chapter 1",
+      content: "",
+      taskSheet: "Task sheet",
+      sceneCards: null,
+      expectation: null,
+      generationState: "drafting",
+      chapterStatus: "generating",
+      riskFlags: null,
+      repairHistory: null,
+      qualityReports: [],
+      auditReports: [],
+      storyStateSnapshots: [],
+      canonicalStateVersions: [],
+    },
+  ];
+  t.after(() => {
+    prisma.chapter.findMany = originalFindMany;
+  });
+
+  const module = getDirectorExecutionStepModule("chapter_execution");
+  const context = {
+    novelId: "novel-no-draft",
+    projectionHints: {
+      directorCanonicalState: {
+        ...buildDirectorStateHint({}, null),
+        task: {
+          ...buildDirectorStateHint({}, null).task,
+          id: "task-no-draft",
+          novelId: "novel-no-draft",
+          status: "failed",
+          lastError: "provider outage",
+        },
+      },
+    },
+  };
+
+  const validation = await module.validateOutput(undefined, context);
+
+  assert.equal(validation.valid, false);
+  assert.match(validation.reason, /provider outage/);
+  assert.equal(validation.evidence.draftedChapterCount, 0);
+  assert.equal(validation.evidence.taskStatus, "failed");
+  assert.equal(validation.evidence.lastError, "provider outage");
+});
+
 test("chapter quality review completion is scoped to the active auto execution range", async (t) => {
   const originalFindMany = prisma.chapter.findMany;
   const module = getDirectorExecutionStepModule("chapter_quality_review");
