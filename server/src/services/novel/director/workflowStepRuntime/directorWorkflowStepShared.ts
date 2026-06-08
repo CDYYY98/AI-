@@ -186,6 +186,25 @@ export async function inspectFreshScopedChapterExecutionProgress(input: {
   );
 }
 
+export async function inspectFreshScopedChapterStateCommitFacts(input: {
+  novelId: string;
+  state: Awaited<ReturnType<DirectorFactSummaryService["getState"]>>;
+  request?: DirectorConfirmRequest | null;
+}): Promise<{
+  draftedChapterCount: number;
+  committedChapterCount: number;
+  totalChapters: number;
+}> {
+  const progress = await inspectFreshScopedChapterExecutionProgress(input);
+  return {
+    draftedChapterCount: progress?.draftedChapterCount ?? 0,
+    committedChapterCount: progress?.chapters?.filter((chapter) => (
+      chapter.completedStages.includes("chapter_state_committed")
+    )).length ?? 0,
+    totalChapters: progress?.totalChapters ?? 0,
+  };
+}
+
 export function getCandidateStageMode(stage: DirectorCandidateStageNode): string | null {
   switch (stage) {
     case "candidate_generation":

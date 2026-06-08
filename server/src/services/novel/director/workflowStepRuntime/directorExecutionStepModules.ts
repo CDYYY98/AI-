@@ -36,11 +36,17 @@ import {
   readyState,
   requireDirectorRequest,
   inspectFreshScopedChapterExecutionProgress,
+  inspectFreshScopedChapterStateCommitFacts,
 } from "./directorWorkflowStepShared";
 import {
   DIRECTOR_EXECUTION_CONTRACT_SYNC_STEP_ID,
   DIRECTOR_EXECUTION_STEP_IDS,
 } from "./directorWorkflowStepIds";
+import {
+  chapterHasCompletedStage,
+  inspectScopedChapterExecutionProgress,
+  isAutoQualityReviewDisabled,
+} from "./executionFacts/chapterExecutionFactInspectors";
 
 function createChapterDraftExecutableModule(
   descriptor: WorkflowStepModuleDescriptor,
@@ -443,29 +449,6 @@ function createFactOnlyExecutionModule(input: {
   );
 }
 
-function chapterHasCompletedStage(
-  chapter: { completedStages?: string[] | null },
-  stage: string,
-): boolean {
-  return Array.isArray(chapter.completedStages) && chapter.completedStages.includes(stage);
-}
-
-async function isAutoQualityReviewDisabled(context: WorkflowStepExecutionContext): Promise<boolean> {
-  const { state, request } = await loadDirectorModuleState(context);
-  const seedPayload = state.seedPayload as {
-    autoExecution?: { autoReview?: unknown } | null;
-    autoExecutionPlan?: { autoReview?: unknown } | null;
-  };
-  return seedPayload.autoExecution?.autoReview === false
-    || seedPayload.autoExecutionPlan?.autoReview === false
-    || request?.autoExecutionPlan?.autoReview === false;
-}
-
-async function inspectScopedChapterExecutionProgress(context: WorkflowStepExecutionContext) {
-  const { state, novelId, request } = await loadDirectorModuleState(context);
-  return inspectFreshScopedChapterExecutionProgress({ novelId, state, request });
-}
-
 export const DIRECTOR_EXECUTION_CONTRACT_SYNC_STEP_MODULE = createChapterExecutionContractSyncModule({
   ...createWorkflowStepDescriptorFromCatalogEntry({
     entry: getWorkflowStepCatalogEntry(DIRECTOR_EXECUTION_CONTRACT_SYNC_STEP_ID),
@@ -586,27 +569,30 @@ export const DIRECTOR_EXECUTION_STEP_MODULES: Record<
       adapter: getDirectorExecutionNodeAdapter("chapter_state_commit"),
     }),
     inspectFacts: async (context) => {
-      const summary = await loadFactBaseSummary(context);
-      const draftedCount = summary.repair.draftedChapterCount;
-      const committedCount = summary.repair.committedChapterCount;
-      const drafted = { length: draftedCount };
-      const committed = committedCount;
+      const { state, novelId, request } = await loadDirectorModuleState(context);
+      const {
+        draftedChapterCount,
+        committedChapterCount,
+        totalChapters,
+      } = await inspectFreshScopedChapterStateCommitFacts({ novelId, state, request });
+      const evidence = { draftedChapterCount, committedChapterCount, totalChapters };
+      const completed = draftedChapterCount > 0 && committedChapterCount >= draftedChapterCount;
       return {
-        readiness: drafted.length > 0
-          ? readyState({ evidence: { draftedChapterCount: drafted.length, committedChapterCount: committed } })
+        readiness: draftedChapterCount > 0
+          ? readyState({ evidence })
           : blockedState("Chapter state commit requires drafted chapters.", { code: "missing_chapter_drafts", nextAction: "continue_chapter_execution" }),
-        completion: drafted.length > 0 && committed >= drafted.length
-          ? completedFact(DIRECTOR_EXECUTION_STEP_IDS.chapter_state_commit, { evidence: { draftedChapterCount: drafted.length, committedChapterCount: committed } })
+        completion: completed
+          ? completedFact(DIRECTOR_EXECUTION_STEP_IDS.chapter_state_commit, { evidence })
           : pendingFact(DIRECTOR_EXECUTION_STEP_IDS.chapter_state_commit, {
-            ratio: drafted.length > 0 ? committed / drafted.length : 0,
-            evidence: { draftedChapterCount: drafted.length, committedChapterCount: committed },
+            ratio: draftedChapterCount > 0 ? committedChapterCount / draftedChapterCount : 0,
+            evidence,
           }),
         progress: buildSimpleProgress({
-          status: drafted.length > 0 && committed >= drafted.length ? "completed" : drafted.length > 0 ? "partially_done" : "blocked",
-          ratio: drafted.length > 0 ? committed / drafted.length : 0,
-          label: drafted.length > 0 && committed >= drafted.length ? "章节状态提交已完成" : "正在补齐章节状态提交",
-          evidence: { draftedChapterCount: drafted.length, committedChapterCount: committed },
-          nextAction: drafted.length > 0 && committed >= drafted.length ? "sync_payoff_ledger" : "commit_state",
+          status: completed ? "completed" : draftedChapterCount > 0 ? "partially_done" : "blocked",
+          ratio: draftedChapterCount > 0 ? committedChapterCount / draftedChapterCount : 0,
+          label: completed ? "章节状态提交已完成" : "正在补齐章节状态提交",
+          evidence,
+          nextAction: completed ? "sync_payoff_ledger" : "commit_state",
         }),
       };
     },
