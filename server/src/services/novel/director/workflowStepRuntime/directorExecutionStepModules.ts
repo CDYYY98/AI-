@@ -441,6 +441,17 @@ function chapterHasCompletedStage(
   return Array.isArray(chapter.completedStages) && chapter.completedStages.includes(stage);
 }
 
+async function isAutoQualityReviewDisabled(context: WorkflowStepExecutionContext): Promise<boolean> {
+  const { state, request } = await loadDirectorModuleState(context);
+  const seedPayload = state.seedPayload as {
+    autoExecution?: { autoReview?: unknown } | null;
+    autoExecutionPlan?: { autoReview?: unknown } | null;
+  };
+  return seedPayload.autoExecution?.autoReview === false
+    || seedPayload.autoExecutionPlan?.autoReview === false
+    || request?.autoExecutionPlan?.autoReview === false;
+}
+
 async function inspectScopedChapterExecutionProgress(context: WorkflowStepExecutionContext) {
   const { state, novelId, request } = await loadDirectorModuleState(context);
   return scopeChapterExecutionProgress(
@@ -480,28 +491,38 @@ export const DIRECTOR_EXECUTION_STEP_MODULES: Record<
     }),
     inspectFacts: async (context) => {
       const progress = await inspectScopedChapterExecutionProgress(context);
+      const autoReviewDisabled = await isAutoQualityReviewDisabled(context);
       const draftedCount = progress?.draftedChapterCount ?? 0;
       const reviewedCount = progress?.chapters?.filter((chapter) => chapterHasCompletedStage(chapter, "audit_completed")).length ?? 0;
+      const effectiveReviewedCount = autoReviewDisabled ? draftedCount : reviewedCount;
+      const evidence = {
+        draftedChapterCount: draftedCount,
+        reviewedChapterCount: reviewedCount,
+        autoReview: !autoReviewDisabled,
+        reviewSkipped: autoReviewDisabled,
+      };
       const drafted = { length: draftedCount };
-      const reviewed = reviewedCount;
+      const reviewed = effectiveReviewedCount;
       return {
         readiness: draftedCount > 0
-          ? readyState({ evidence: { draftedChapterCount: draftedCount, reviewedChapterCount: reviewedCount } })
+          ? readyState({ evidence })
           : blockedState("Draft chapters are required before quality review.", {
             code: "missing_chapter_drafts",
             nextAction: "continue_chapter_execution",
           }),
-        completion: draftedCount > 0 && reviewedCount >= draftedCount
-          ? completedFact(DIRECTOR_EXECUTION_STEP_IDS.chapter_quality_review, { evidence: { draftedChapterCount: draftedCount, reviewedChapterCount: reviewedCount } })
+        completion: draftedCount > 0 && effectiveReviewedCount >= draftedCount
+          ? completedFact(DIRECTOR_EXECUTION_STEP_IDS.chapter_quality_review, { evidence })
           : pendingFact(DIRECTOR_EXECUTION_STEP_IDS.chapter_quality_review, {
-            ratio: draftedCount > 0 ? reviewedCount / draftedCount : 0,
-            evidence: { draftedChapterCount: draftedCount, reviewedChapterCount: reviewedCount },
+            ratio: draftedCount > 0 ? effectiveReviewedCount / draftedCount : 0,
+            evidence,
           }),
         progress: buildSimpleProgress({
           status: drafted.length > 0 && reviewed >= drafted.length ? "completed" : drafted.length > 0 ? "partially_done" : "blocked",
           ratio: drafted.length > 0 ? reviewed / drafted.length : 0,
-          label: drafted.length > 0 && reviewed >= drafted.length ? "章节审校已完成" : "正在根据最新正文补齐审校结果",
-          evidence: { draftedChapterCount: drafted.length, reviewedChapterCount: reviewed },
+          label: drafted.length > 0 && reviewed >= drafted.length
+            ? (autoReviewDisabled ? "本轮不执行自动审校" : "章节审校已完成")
+            : "正在根据最新正文补齐审校结果",
+          evidence,
           nextAction: drafted.length > 0 && reviewed >= drafted.length ? "commit_chapter_state" : "run_quality_review",
         }),
       };
