@@ -122,6 +122,23 @@ export class ChapterExecutionStageRunner implements NovelProductionStageRunner {
   }
 }
 
+let chapterExecutionStageRunnerRegistered = false;
+let fallbackChapterRuntimeCoordinator: ChapterRuntimeCoordinator | null = null;
+
 export function registerChapterExecutionStageRunner(deps: ChapterExecutionStageRunnerDeps): void {
+  chapterExecutionStageRunnerRegistered = true;
   novelProductionOrchestrator.register("chapter_execution", new ChapterExecutionStageRunner(deps));
+}
+
+export function ensureDefaultChapterExecutionStageRunner(): void {
+  if (chapterExecutionStageRunnerRegistered) {
+    return;
+  }
+  fallbackChapterRuntimeCoordinator ??= new ChapterRuntimeCoordinator();
+  registerChapterExecutionStageRunner({
+    getCore: () => {
+      throw new Error("Chapter pipeline execution requires a NovelService-owned production runner.");
+    },
+    getCoordinator: () => fallbackChapterRuntimeCoordinator!,
+  });
 }

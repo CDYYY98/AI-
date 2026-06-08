@@ -15,7 +15,11 @@ import {
   novelStructuredOutlineRepairPrompt,
 } from "../../prompting/prompts/novel/coreGeneration.prompts";
 import { novelReferenceService } from "./NovelReferenceService";
-import { ChapterRuntimeCoordinator } from "./runtime/ChapterRuntimeCoordinator";
+import {
+  buildManualChapterControlPolicy,
+  ensureDefaultChapterExecutionStageRunner,
+} from "./production/ChapterExecutionStageRunner";
+import { novelProductionOrchestrator } from "./production/NovelProductionOrchestrator";
 import {
   parseStrictStructuredOutline,
   stringifyStructuredOutline,
@@ -40,9 +44,45 @@ import {
 } from "./novelCoreShared";
 import { buildWorldContextFromNovel, ensureNovelCharacters, queueRagUpsert } from "./novelCoreSupport";
 
+export interface ChapterStreamProductionPort {
+  createChapterStream(
+    novelId: string,
+    chapterId: string,
+    options?: ChapterGenerateOptions,
+  ): Promise<{
+    stream: AsyncIterable<BaseMessageChunk>;
+    onDone: (fullContent: string) => Promise<void>;
+  }>;
+}
+
+const orchestratedChapterProductionPort: ChapterStreamProductionPort = {
+  async createChapterStream(novelId, chapterId, options = {}) {
+    ensureDefaultChapterExecutionStageRunner();
+    const result = await novelProductionOrchestrator.runStage({
+      novelId,
+      stage: "chapter_execution",
+      policy: buildManualChapterControlPolicy(),
+      trigger: "legacy_core_generate_chapter",
+      payload: {
+        mode: "single_chapter_stream",
+        chapterId,
+        options,
+        includeRuntimePackage: false,
+      },
+    });
+    if (!result.payload) {
+      throw new Error("Unified chapter execution did not return a stream payload.");
+    }
+    return result.payload as Awaited<ReturnType<ChapterStreamProductionPort["createChapterStream"]>>;
+  },
+};
+
 export class NovelCoreGenerationService {
   private readonly storyWorldSliceService = new NovelWorldSliceService();
-  private readonly chapterRuntimeCoordinator = new ChapterRuntimeCoordinator();
+
+  constructor(
+    private readonly chapterProduction: ChapterStreamProductionPort = orchestratedChapterProductionPort,
+  ) {}
 
   async createOutlineStream(novelId: string, options: OutlineGenerateOptions = {}) {
     const novel = await prisma.novel.findUnique({
@@ -235,9 +275,7 @@ export class NovelCoreGenerationService {
   }
 
   async createChapterStream(novelId: string, chapterId: string, options: ChapterGenerateOptions = {}) {
-    return this.chapterRuntimeCoordinator.createChapterStream(novelId, chapterId, options, {
-      includeRuntimePackage: false,
-    });
+    return this.chapterProduction.createChapterStream(novelId, chapterId, options);
   }
 
   async generateTitles(novelId: string, options: TitleGenerateOptions = {}) {
