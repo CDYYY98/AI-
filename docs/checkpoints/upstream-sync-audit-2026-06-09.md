@@ -59,6 +59,10 @@
 
 `dea07265`、`b0dd3ff7`、`d6725d27`、`4ba82892` 这类提交不应按上游直接同步。它们主要调整上游 README、上游桌面版本号和 GitHub Release workflow。当前本地桌面发布通道已经指向 `CDYYY98/AI-`，产品名是 `图灵网文工作台`，`desktop/package.json` 版本由本地正式发布节奏控制；同步上游 owner/repo、默认产品名或版本号会破坏本地客户端自动更新和品牌配置。后续只可按需吸收通用 workflow 技术点，例如 Node 24 或打包校验步骤，不能同步上游发布身份。
 
+### `890ff636 refactor(export): split novel export module` / `ea3c982d test(export): cover module entrypoint`
+
+导出模块拆分是低风险架构清理候选，但不应机械复制上游路径。本地仍有 `server/src/services/novel/NovelExportService.ts`，当前约 772 行，已经超过长文件硬阈值；上游把类型、格式化、映射和服务入口拆入 `server/src/modules/export/`。后续可以按本地代码拆出清晰模块并保留 `NovelExportService` 兼容导出，再运行 `corepack pnpm --filter @ai-novel/server build` 与 `node --test server\tests\novelExportService.test.js`。该项不涉及迁移或商业化能力，但会动服务边界，适合单独提交。
+
 ## 当前结论
 
 截至本检查点，继续同步时应优先挑选不含迁移、可独立验证、不会覆盖本地商业能力的修复。世界观、封面、timeline constraint 和章节运行时 finalization 均应拆成单独功能阶段，不应直接 merge 或 cherry-pick。
