@@ -85,7 +85,7 @@ export class AutoDirectorFollowUpService {
   private readonly workflowTaskAdapter = new NovelWorkflowTaskAdapter();
 
   async getOverview(scope: FollowUpScope = {}): Promise<AutoDirectorFollowUpOverview> {
-    const rows = await this.loadRows(scope);
+    const rows = await this.loadRows(scope, { heal: false });
     const knownTaskIds = new Set(rows.map((row) => row.id));
     const taskById = new Map(rows.map((row) => [row.id, row]));
     const channelSettings = await getAutoDirectorChannelSettings();
@@ -271,9 +271,12 @@ export class AutoDirectorFollowUpService {
     }, taskById));
   }
 
-  private async loadRows(scope: FollowUpScope = {}): Promise<FollowUpWorkflowRow[]> {
+  private async loadRows(scope: FollowUpScope = {}, options: { heal?: boolean } = {}): Promise<FollowUpWorkflowRow[]> {
     const archivedIds = await getArchivedTaskIds("novel_workflow", scope);
     const rows = await this.fetchRows(archivedIds, scope);
+    if (options.heal === false) {
+      return selectVisibleWorkflowRows(rows, { mode: "follow_up" });
+    }
     const healed = await Promise.all(
       rows.map((row) => this.workflowService.healAutoDirectorTaskState(row.id, row)),
     );
@@ -306,7 +309,25 @@ export class AutoDirectorFollowUpService {
           }
           : {}),
       },
-      include: {
+      select: {
+        id: true,
+        novelId: true,
+        lane: true,
+        title: true,
+        status: true,
+        currentStage: true,
+        currentItemKey: true,
+        currentItemLabel: true,
+        checkpointType: true,
+        checkpointSummary: true,
+        resumeTargetJson: true,
+        seedPayloadJson: true,
+        milestonesJson: true,
+        pendingManualRecovery: true,
+        attemptCount: true,
+        lastError: true,
+        finishedAt: true,
+        updatedAt: true,
         novel: {
           select: {
             title: true,

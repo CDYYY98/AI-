@@ -2,7 +2,6 @@ import type {
   RecoverableTaskListResponse,
   RecoverableTaskSummary,
   TaskKind,
-  UnifiedTaskDetail,
 } from "@ai-novel/shared/types/task";
 import { prisma } from "../../db/prisma";
 import { AppError } from "../../middleware/errorHandler";
@@ -13,7 +12,6 @@ import { NovelService } from "../novel/NovelService";
 import { DirectorCommandService } from "../novel/director/DirectorCommandService";
 import { NovelWorkflowRuntimeService } from "../novel/workflow/NovelWorkflowRuntimeService";
 import { styleExtractionTaskService } from "../styleEngine/StyleExtractionTaskService";
-import { taskCenterService } from "./TaskCenterService";
 
 interface RecoveryInitializationDeps {
   markPendingBookAnalysesForManualRecovery(): Promise<unknown>;
@@ -28,21 +26,28 @@ interface AutoDirectorRecoveryCommandPort {
   continueTask?: (taskId: string) => Promise<void>;
 }
 
-function toRecoverableTaskSummary(detail: UnifiedTaskDetail | null): RecoverableTaskSummary | null {
-  if (!detail || (detail.status !== "queued" && detail.status !== "running")) {
-    return null;
-  }
+function toRunningStatus(status: string): RecoverableTaskSummary["status"] {
+  return status === "running" ? "running" : "queued";
+}
+
+function buildWorkflowSourceRoute(row: { id: string; novelId: string | null }): string {
+  return row.novelId
+    ? `/novels/${row.novelId}/edit?directorTaskId=${row.id}&taskPanel=1`
+    : `/tasks?kind=novel_workflow&id=${row.id}`;
+}
+
+function buildImagePresentation(row: {
+  id: string;
+  sceneType: string;
+  baseCharacterId: string | null;
+  baseCharacter?: { name: string } | null;
+}): { title: string; ownerLabel: string; sourceRoute: string } {
+  void row.sceneType;
+  const ownerLabel = row.baseCharacter?.name?.trim() || "未关联角色";
   return {
-    id: detail.id,
-    kind: detail.kind as RecoverableTaskSummary["kind"],
-    title: detail.title,
-    ownerLabel: detail.ownerLabel,
-    status: detail.status,
-    currentStage: detail.currentStage,
-    currentItemLabel: detail.currentItemLabel,
-    resumeAction: detail.resumeAction,
-    sourceRoute: detail.sourceRoute,
-    recoveryHint: detail.lastError?.trim() || detail.recoveryHint,
+    title: row.baseCharacter?.name ? `角色图像：${row.baseCharacter.name}` : `图像任务 ${row.id.slice(0, 8)}`,
+    ownerLabel,
+    sourceRoute: row.baseCharacterId ? `/base-characters?id=${row.baseCharacterId}` : "/base-characters",
   };
 }
 
@@ -83,7 +88,6 @@ export class RecoveryTaskService {
   }
 
   async listRecoveryCandidates(userId?: string): Promise<RecoverableTaskListResponse> {
-    await this.waitUntilReady();
     const [
       workflowRows,
       pipelineRows,
@@ -98,7 +102,18 @@ export class RecoveryTaskService {
           pendingManualRecovery: true,
           ...(userId && { novel: { is: { ownerUserId: userId } } }),
         },
-        select: { id: true, updatedAt: true },
+        select: {
+          id: true,
+          novelId: true,
+          title: true,
+          status: true,
+          currentStage: true,
+          currentItemLabel: true,
+          checkpointSummary: true,
+          lastError: true,
+          updatedAt: true,
+          novel: { select: { title: true } },
+        },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       }),
       prisma.generationJob.findMany({
@@ -107,7 +122,18 @@ export class RecoveryTaskService {
           pendingManualRecovery: true,
           ...(userId && { novel: { is: { ownerUserId: userId } } }),
         },
-        select: { id: true, updatedAt: true },
+        select: {
+          id: true,
+          novelId: true,
+          startOrder: true,
+          endOrder: true,
+          status: true,
+          currentStage: true,
+          currentItemLabel: true,
+          error: true,
+          updatedAt: true,
+          novel: { select: { title: true } },
+        },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       }),
       prisma.bookAnalysis.findMany({
@@ -115,7 +141,17 @@ export class RecoveryTaskService {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
         },
-        select: { id: true, updatedAt: true },
+        select: {
+          id: true,
+          documentId: true,
+          title: true,
+          status: true,
+          currentStage: true,
+          currentItemLabel: true,
+          lastError: true,
+          updatedAt: true,
+          document: { select: { title: true } },
+        },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       }),
       prisma.imageGenerationTask.findMany({
@@ -123,7 +159,17 @@ export class RecoveryTaskService {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
         },
-        select: { id: true, updatedAt: true },
+        select: {
+          id: true,
+          status: true,
+          sceneType: true,
+          baseCharacterId: true,
+          currentStage: true,
+          currentItemLabel: true,
+          error: true,
+          updatedAt: true,
+          baseCharacter: { select: { name: true } },
+        },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       }),
       prisma.styleExtractionTask.findMany({
@@ -131,31 +177,100 @@ export class RecoveryTaskService {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
         },
-        select: { id: true, updatedAt: true },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          currentStage: true,
+          currentItemLabel: true,
+          error: true,
+          updatedAt: true,
+        },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       }),
     ]);
 
-    const rawItems = [
-      ...workflowRows.map((row) => ({ kind: "novel_workflow" as const, id: row.id, updatedAt: row.updatedAt })),
-      ...pipelineRows.map((row) => ({ kind: "novel_pipeline" as const, id: row.id, updatedAt: row.updatedAt })),
-      ...bookRows.map((row) => ({ kind: "book_analysis" as const, id: row.id, updatedAt: row.updatedAt })),
-      ...imageRows.map((row) => ({ kind: "image_generation" as const, id: row.id, updatedAt: row.updatedAt })),
-      ...styleExtractionRows.map((row) => ({ kind: "style_extraction" as const, id: row.id, updatedAt: row.updatedAt })),
-    ].sort((left, right) => {
+    const rawItems: Array<RecoverableTaskSummary & { updatedAt: Date }> = [
+      ...workflowRows.map((row) => ({
+        id: row.id,
+        kind: "novel_workflow" as const,
+        title: row.title,
+        ownerLabel: row.novel?.title?.trim() || row.title,
+        status: toRunningStatus(row.status),
+        currentStage: row.currentStage,
+        currentItemLabel: row.currentItemLabel,
+        resumeAction: "恢复自动导演",
+        sourceRoute: buildWorkflowSourceRoute(row),
+        recoveryHint: row.lastError?.trim() || row.checkpointSummary?.trim() || "服务重启后任务已暂停，等待恢复。",
+        updatedAt: row.updatedAt,
+      })),
+      ...pipelineRows.map((row) => {
+        const novelTitle = row.novel?.title?.trim() || `小说 ${row.novelId.slice(0, 8)}`;
+        return {
+          id: row.id,
+          kind: "novel_pipeline" as const,
+          title: `${novelTitle} (${row.startOrder}-${row.endOrder}章)`,
+          ownerLabel: novelTitle,
+          status: toRunningStatus(row.status),
+          currentStage: row.currentStage,
+          currentItemLabel: row.currentItemLabel,
+          resumeAction: "恢复章节流水线",
+          sourceRoute: `/novels/${row.novelId}/edit`,
+          recoveryHint: row.error?.trim() || "章节流水线已暂停，等待恢复。",
+          updatedAt: row.updatedAt,
+        };
+      }),
+      ...bookRows.map((row) => ({
+        id: row.id,
+        kind: "book_analysis" as const,
+        title: row.title,
+        ownerLabel: row.document.title,
+        status: toRunningStatus(row.status),
+        currentStage: row.currentStage,
+        currentItemLabel: row.currentItemLabel,
+        resumeAction: "恢复拆书任务",
+        sourceRoute: `/book-analysis?analysisId=${row.id}&documentId=${row.documentId}`,
+        recoveryHint: row.lastError?.trim() || "拆书任务已暂停，等待恢复。",
+        updatedAt: row.updatedAt,
+      })),
+      ...imageRows.map((row) => {
+        const presentation = buildImagePresentation(row);
+        return {
+          id: row.id,
+          kind: "image_generation" as const,
+          title: presentation.title,
+          ownerLabel: presentation.ownerLabel,
+          status: toRunningStatus(row.status),
+          currentStage: row.currentStage,
+          currentItemLabel: row.currentItemLabel,
+          resumeAction: "恢复图像任务",
+          sourceRoute: presentation.sourceRoute,
+          recoveryHint: row.error?.trim() || "图像任务已暂停，等待恢复。",
+          updatedAt: row.updatedAt,
+        };
+      }),
+      ...styleExtractionRows.map((row) => ({
+        id: row.id,
+        kind: "style_extraction" as const,
+        title: `写法提取：${row.name}`,
+        ownerLabel: row.name,
+        status: toRunningStatus(row.status),
+        currentStage: row.currentStage,
+        currentItemLabel: row.currentItemLabel,
+        resumeAction: "恢复写法提取",
+        sourceRoute: "/writing-formula",
+        recoveryHint: row.error?.trim() || "写法提取任务已暂停，等待恢复。",
+        updatedAt: row.updatedAt,
+      })),
+    ];
+
+    const items = rawItems.sort((left, right) => {
       const timeDiff = right.updatedAt.getTime() - left.updatedAt.getTime();
       if (timeDiff !== 0) {
         return timeDiff;
       }
       return right.id.localeCompare(left.id);
-    });
-
-    const items = (await Promise.all(
-      rawItems.map(async (item) => {
-        const detail = await taskCenterService.getTaskDetail(item.kind, item.id);
-        return toRecoverableTaskSummary(detail);
-      }),
-    )).filter((item): item is RecoverableTaskSummary => Boolean(item));
+    }).map(({ updatedAt: _updatedAt, ...item }) => item);
 
     return { items };
   }

@@ -4,6 +4,7 @@ const http = require("node:http");
 const { createApp } = require("../dist/app.js");
 const { recoveryTaskService } = require("../dist/services/task/RecoveryTaskService.js");
 const { taskCenterService } = require("../dist/services/task/TaskCenterService.js");
+const { prisma } = require("../dist/db/prisma.js");
 
 function listen(server) {
   return new Promise((resolve) => {
@@ -50,6 +51,80 @@ test("recovery task service accepts auto director resume before background work 
   assert.equal(continueStarted, true);
   releaseContinue();
   await continuePromise;
+});
+
+test("recovery task service lists candidates from lightweight task projections", async () => {
+  const { RecoveryTaskService } = require("../dist/services/task/RecoveryTaskService.js");
+  const originals = {
+    workflowFindMany: prisma.novelWorkflowTask.findMany,
+    pipelineFindMany: prisma.generationJob.findMany,
+    bookFindMany: prisma.bookAnalysis.findMany,
+    imageFindMany: prisma.imageGenerationTask.findMany,
+    styleFindMany: prisma.styleExtractionTask.findMany,
+    getTaskDetail: taskCenterService.getTaskDetail,
+  };
+
+  prisma.novelWorkflowTask.findMany = async ({ where, select }) => {
+    assert.equal(where.novel.is.ownerUserId, "user-1");
+    assert.equal(select.currentItemLabel, true);
+    return [{
+      id: "workflow-light",
+      novelId: "novel-1",
+      title: "《风雪断桥》自动导演",
+      status: "running",
+      currentStage: "chapter_execution",
+      currentItemLabel: "第 3 章",
+      checkpointSummary: "服务重启后等待恢复。",
+      lastError: null,
+      updatedAt: new Date("2026-04-22T10:00:00.000Z"),
+      novel: { title: "风雪断桥" },
+    }];
+  };
+  prisma.generationJob.findMany = async () => [];
+  prisma.bookAnalysis.findMany = async () => [];
+  prisma.imageGenerationTask.findMany = async () => [];
+  prisma.styleExtractionTask.findMany = async () => [];
+  taskCenterService.getTaskDetail = async () => {
+    throw new Error("recovery candidate list should not load full task details");
+  };
+
+  const recoveryService = new RecoveryTaskService(
+    {},
+    {},
+    {},
+    {},
+    {
+      async markPendingBookAnalysesForManualRecovery() {},
+      async markPendingImageTasksForManualRecovery() {},
+      async markPendingAutoDirectorTasksForManualRecovery() {},
+      async markPendingPipelineJobsForManualRecovery() {},
+      async markPendingStyleTasksForManualRecovery() {},
+    },
+  );
+
+  try {
+    const response = await recoveryService.listRecoveryCandidates("user-1");
+
+    assert.deepEqual(response.items, [{
+      id: "workflow-light",
+      kind: "novel_workflow",
+      title: "《风雪断桥》自动导演",
+      ownerLabel: "风雪断桥",
+      status: "running",
+      currentStage: "chapter_execution",
+      currentItemLabel: "第 3 章",
+      resumeAction: "恢复自动导演",
+      sourceRoute: "/novels/novel-1/edit?directorTaskId=workflow-light&taskPanel=1",
+      recoveryHint: "服务重启后等待恢复。",
+    }]);
+  } finally {
+    prisma.novelWorkflowTask.findMany = originals.workflowFindMany;
+    prisma.generationJob.findMany = originals.pipelineFindMany;
+    prisma.bookAnalysis.findMany = originals.bookFindMany;
+    prisma.imageGenerationTask.findMany = originals.imageFindMany;
+    prisma.styleExtractionTask.findMany = originals.styleFindMany;
+    taskCenterService.getTaskDetail = originals.getTaskDetail;
+  }
 });
 
 test("task recovery routes expose overview, recovery candidates, and resume actions", async () => {
