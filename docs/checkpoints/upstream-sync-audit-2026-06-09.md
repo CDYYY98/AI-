@@ -21,6 +21,12 @@
 - `3a1dd38e fix(client): add chapter preview copy action`、`dee777ed fix(client): improve toast close button visibility`、`32d80bb4 feat(characters): highlight protagonist in asset workspace` 已覆盖。本地预览页支持复制章节正文，toast 关闭按钮可见，角色资产工作台已突出主角并拆出侧栏与摘要组件。
 - `58dd6930` / `ef57c022` / `5f5aee36` / `4c1dc8ec` / `24cfdbf7` 的反 AI 规则中心、AI 起草、效果测试、改写提示强化和正文生成后审查开关已覆盖。本地已有 `AntiAiRulesPage` 及拆分组件、`AntiAiRuleService`、`AntiAiPolicyResolver`、预览规则注入、Prompt Registry 中的 `style.anti_ai_rule.draft@v1`，以及 `PostGenerationStyleReviewRunner` 和小说基础信息中的生成后审查开关。
 - 反 AI 组与上游对比后，本地相关 style-engine 文件没有缺失的上游差异；唯一差异是本地 `server/src/prompting/registry.ts` 额外保留了章节接收评估、章节产物增量提取和自动导演灵感提示注册，属于本地已移植能力，不应为贴近上游而移除。
+- `e3869abc fix(prompting): reduce chapter structured output repair drift` 已覆盖。本地已有章节接收、章节产物增量和 timeline 抽取的结构化输出别名归一化，repair 日志会记录 `schemaPaths`，并提供 `scripts/summarize-llm-repair-log.cjs` 供诊断 repair 高发 schema path。
+- `f056815b fix(director): prevent payoff replan false stops` 已覆盖。本地章节生产链规则已经明确 `urgentPayoffs`、`ledgerSummary.urgentCount` 和 `nextAction=advance_payoff` 只能作为写作职责信号，不能在生成后单独触发重规划；`replanDecision.test.js` 也覆盖了紧急 payoff 不误停和无明确窗口的逾期 payoff 降级。
+- `fedd0b30 fix(director): scope chapter quality facts` 已覆盖。本地章节审校、修复和状态提交事实读取会按当前自动执行范围计算，`ChapterExecutionProgressInspector` 已把可继续的质量债务视为可提交状态，避免旧章节质量事实拖住当前范围。
+- `21e970a4 perf(director): enforce chapter token budget` / `c0f0c57e fix(director): correct chapter budget scope and raise token threshold` 已覆盖。本地已有自动导演 token 预算 wiki，单章阈值为 `80_000`，`getLargestChapterUsage` 在存在 `taskIds` 时使用严格 task-only 查询，避免把历史取消或失败任务的用量算进当前章节预算。
+- `ec7cc4e5 fix(chapter-runtime): prevent duplicate extraction budget stops` 已覆盖。本地后台章节资产同步会在抽取前写入 `running` 抢占 checkpoint，成功后标记完成，失败时标记 `failed`，并通过过期窗口释放陈旧运行记录，避免重复抽取导致预算误停。
+- `eb24ff9c perf(chapter-runtime): defer timeline extraction` 的热路径降负目标已按本地 monolithic runtime 结构覆盖：章节协调器通过 deferred artifact/background sync 避免把资产回灌压在正文热路径上。上游拆分出的 `ChapterContentFinalizationService` / `ChapterQualityGateService` 文件不在本地结构中，不能按文件级别照搬。
 
 ## 需要单独设计阶段的上游候选
 
