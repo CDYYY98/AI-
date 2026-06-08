@@ -11,6 +11,14 @@
 - `c109a6ac perf(app): lighten first-screen API loading` 的服务端轻量读路径已按本地任务和自动导演结构移植。
 - `13aac0e2 perf(chapter-runtime): cache quality gates across restarts` 的可独立部分已移植为章节接收闸门成功结果缓存，没有同步上游完整 timeline finalization 拆分。
 - 自动导演灵感推荐、章节失败原因展示、自动审校跳过事实、模型设置轻量读取等小修复已在前序提交中按本地结构移植。
+- `377ac9ca fix(settings): persist current llm selection` 已覆盖。本地已有 `LLMSelectionSettingsService`、`/api/settings/llm-selection`、`LLMSelectionBootstrap` 和后台模型页同步逻辑。
+- `7ddf6e53 fix knowledge archive restore flow` 已覆盖。本地知识库归档恢复会重新排队 RAG rebuild，并有 `knowledgeServiceStatus.test.js` 覆盖归档、恢复和删除任务状态。
+- `0f747791 fix(novel): stop repeated chapter repair refreshes` 已覆盖。本地已有自动导演质量循环修复模式升级、已有正文不重复保存为 draft 的 pipeline 测试。
+- `2c2da6da fix(director): run explicit chapter resume after outline sync` 已覆盖。本地 pipeline runtime 已在显式章节执行恢复时继续进入章节执行节点，并有 `novelDirectorPipelineRuntime.test.js` 覆盖。
+- `e8b675dd fix(chapter-runtime): guard empty chapter drafts` 已覆盖。本地已有 `chapterEmptyContentError`、空正文重试、pipeline 失败记录和相关测试。
+- `1d213044 feat(server): base novel progress on facts` 已覆盖。本地 `NovelProductionStatusService` 已以 `progressBasis: "facts"` 返回生产进度，并通过 `novelProductionStatus.test.js` 覆盖成功任务、失败任务和交付就绪事实。
+- `08e6e89f` / `5f85c965` 的 5 条灵感和横向展示已覆盖。本地 `IdeaInspirationPanel` 已显示 5 条横向灵感卡片。
+- `3a1dd38e fix(client): add chapter preview copy action`、`dee777ed fix(client): improve toast close button visibility`、`32d80bb4 feat(characters): highlight protagonist in asset workspace` 已覆盖。本地预览页支持复制章节正文，toast 关闭按钮可见，角色资产工作台已突出主角并拆出侧栏与摘要组件。
 
 ## 需要单独设计阶段的上游候选
 
@@ -33,7 +41,7 @@
 
 ### `addd80cd feat(chapter): add future dynamics sidebar`
 
-该提交主要是前端章节侧栏，但读取的数据来自 timeline、角色动态、资源风险等后端投影。可以作为后续体验优化候选，但应等待本地 timeline/资源投影边界稳定，或先设计本地适配数据源。
+该提交主要是前端章节侧栏，但读取的数据来自 timeline、角色动态、资源风险等后端投影。当前本地已有部分 timeline shared 类型，但尚未接通 `getChapterTimeline` 客户端 API、查询 key 和章节页数据装配；直接复制侧栏会造成编译失败或空数据。可以作为后续体验优化候选，但应等待本地 timeline/资源投影边界稳定，或先设计本地适配数据源。
 
 ### `1450fe1b feat: harden character facts and chapter titles`
 
