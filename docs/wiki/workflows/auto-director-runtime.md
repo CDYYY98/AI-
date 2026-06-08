@@ -66,6 +66,7 @@ Web API 只接收命令和返回轻量投影；Worker 负责执行重型生产�
 - 自动导演投影应携带章节质量根因：`rootCauseCode`、`blockingObligations`、`qualityDebtSummary` 和 `qualityBudgetSummary`。执行详情优先用这些字段解释“缺了什么、系统已处理到哪一步、下一步会怎么继续”，而不是把所有章节执行问题显示成通用失败。
 - 章节进度的 `running` 状态必须由真实正文支撑。`chapterStatus=generating` 只能说明曾经进入过草稿生成阶段，不能单独把空正文章节判定为正在执行；空正文章节应保持可恢复的 `not_started`，并把下一步指向重新写正文。
 - `qualityLoop.terminalAction=defer_and_continue` 表示当前章节质量问题已经登记为可回收债务。只要该质量循环不是 `replan_required` 或 `replan`，章节进度可以把它视为可继续状态；即使没有新的状态快照，也不应再次卡在 `chapter_state_committed` 或待修复判断上。
+- 章节进度不得只相信残留的 `chapterStatus`。`needs_repair` 必须由仍然 open 的 high/critical 审校问题支撑；已 resolved 的阻塞问题不能继续让章节停在待修复。`completed` 也不能替代真实批准状态，只有 `generationState=approved/published` 或完整正文与审校事实才能推动章节进入可审核或完成判断。
 - 角色准备阶段的 `character_setup_required` 是可恢复检查点，不是失败。若角色阵容候选已经生成但质量闸要求用户确认，StepModule 应把它识别为 acceptable pause：任务状态停在 `waiting_approval`，候选保留给用户审核或应用，不能再用“正式角色数为 0”把 `character.cast.prepare` 升级成失败。只有在没有正式角色、没有可用候选、也没有可恢复检查点时，才应视为角色准备失败。
 - 角色阵容“应用”分为核心落库和增强补齐两层。核心落库必须同步完成角色、关系和阵容状态，保证用户立即能继续角色资产工作；外显资料补齐和角色动态投影属于增强补齐。自动导演内部链路默认等待增强补齐，以免后续卷策略或结构化大纲读取到不完整动态；用户在角色准备页手动应用阵容时可以先返回核心落库结果，再用轻量提示告知增强补齐会在后台继续。无论入口来自角色准备页还是自动导演，应用阵容时都必须把当前请求的 provider、model 和 temperature 传给外显资料补齐，避免增强补齐绕回默认模型。
 - 角色阵容质量闸不得用正则、关键词表、固定文本片段或字符比例判断身份承接、隐藏真相、题材理解、语言质量或角色职责。这些创作语义必须交给 AI-first 结构化理解、PromptAsset、semantic retry 或 AI 评估链路。确定性闸门只能检查结构契约，例如是否存在 protagonist、gender、必填字段和可恢复检查点。

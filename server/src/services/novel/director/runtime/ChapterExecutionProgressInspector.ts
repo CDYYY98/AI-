@@ -187,11 +187,10 @@ export class ChapterExecutionProgressInspector {
       issue.status === "open" && (issue.severity === "high" || issue.severity === "critical")
     )));
     const hasContinuableRiskFlags = hasContinuableQualityLoopRiskFlags(chapter.riskFlags);
-    const needsRepair = (chapter.chapterStatus === "needs_repair" || hasOpenBlockingIssue)
-      && !hasContinuableRiskFlags;
+    const needsRepair = hasOpenBlockingIssue && !hasContinuableRiskFlags;
     const hasStateCommit = chapter.storyStateSnapshots.length > 0 || chapter.canonicalStateVersions.length > 0;
-    const isApproved = chapter.generationState === "approved" || chapter.chapterStatus === "completed";
-    const isReviewable = chapter.chapterStatus === "pending_review" || (hasDraft && hasAudit && !needsRepair) || isApproved;
+    const isApproved = chapter.generationState === "approved" || chapter.generationState === "published";
+    const isReviewable = (hasDraft && hasAudit && !needsRepair) || isApproved;
     const shouldContinueWithoutStateCommit = hasContinuableRiskFlags && isReviewable;
 
     if (hasExecutionContext) completed.add("execution_contract_ready");
@@ -242,6 +241,7 @@ export class ChapterExecutionProgressInspector {
         hasDraft,
         hasAudit,
         needsRepair,
+        hasOpenBlockingIssue,
         hasContinuableRiskFlags,
         hasStateCommit,
         isReviewable,
