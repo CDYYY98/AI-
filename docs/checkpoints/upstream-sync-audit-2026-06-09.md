@@ -27,6 +27,7 @@
 - `21e970a4 perf(director): enforce chapter token budget` / `c0f0c57e fix(director): correct chapter budget scope and raise token threshold` 已覆盖。本地已有自动导演 token 预算 wiki，单章阈值为 `80_000`，`getLargestChapterUsage` 在存在 `taskIds` 时使用严格 task-only 查询，避免把历史取消或失败任务的用量算进当前章节预算。
 - `ec7cc4e5 fix(chapter-runtime): prevent duplicate extraction budget stops` 已覆盖。本地后台章节资产同步会在抽取前写入 `running` 抢占 checkpoint，成功后标记完成，失败时标记 `failed`，并通过过期窗口释放陈旧运行记录，避免重复抽取导致预算误停。
 - `eb24ff9c perf(chapter-runtime): defer timeline extraction` 的热路径降负目标已按本地 monolithic runtime 结构覆盖：章节协调器通过 deferred artifact/background sync 避免把资产回灌压在正文热路径上。上游拆分出的 `ChapterContentFinalizationService` / `ChapterQualityGateService` 文件不在本地结构中，不能按文件级别照搬。
+- `890ff636 refactor(export): split novel export module` / `ea3c982d test(export): cover module entrypoint` 已按本地结构移植。保留 `server/src/services/novel/NovelExportService.ts` 作为兼容入口，将 TXT/文件名/Markdown 格式化移动到 `export/novelExportFormatting.ts`，将 DTO 映射和角色时间线分组移动到 `export/novelExportMappers.ts`，避免直接套用上游 `server/src/modules/export` 路径导致本地服务边界大范围变动。
 
 ## 需要单独设计阶段的上游候选
 
@@ -58,10 +59,6 @@
 ### 桌面发布、README 状态和上游版本号提交
 
 `dea07265`、`b0dd3ff7`、`d6725d27`、`4ba82892` 这类提交不应按上游直接同步。它们主要调整上游 README、上游桌面版本号和 GitHub Release workflow。当前本地桌面发布通道已经指向 `CDYYY98/AI-`，产品名是 `图灵网文工作台`，`desktop/package.json` 版本由本地正式发布节奏控制；同步上游 owner/repo、默认产品名或版本号会破坏本地客户端自动更新和品牌配置。后续只可按需吸收通用 workflow 技术点，例如 Node 24 或打包校验步骤，不能同步上游发布身份。
-
-### `890ff636 refactor(export): split novel export module` / `ea3c982d test(export): cover module entrypoint`
-
-导出模块拆分是低风险架构清理候选，但不应机械复制上游路径。本地仍有 `server/src/services/novel/NovelExportService.ts`，当前约 772 行，已经超过长文件硬阈值；上游把类型、格式化、映射和服务入口拆入 `server/src/modules/export/`。后续可以按本地代码拆出清晰模块并保留 `NovelExportService` 兼容导出，再运行 `corepack pnpm --filter @ai-novel/server build` 与 `node --test server\tests\novelExportService.test.js`。该项不涉及迁移或商业化能力，但会动服务边界，适合单独提交。
 
 ## 当前结论
 

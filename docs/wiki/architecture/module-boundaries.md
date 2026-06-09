@@ -19,6 +19,7 @@ Wiki 记录稳定规则，计划和检查点保留历史语境。模块治理以
 - 单个源码文件接近 600 行时应评估职责；超过 700 行后继续扩展前必须拆分。
 - 高密度目录新增能力前应先判断是否需要下级责任目录。
 - `server/src/services/novel/director` 应继续向 `commands`、`runtime`、`state`、`automation`、`projections`、`recovery`、`phases` 等责任边界收敛。
+- 小说导出入口保留在 `server/src/services/novel/NovelExportService.ts`，只负责读取数据、组装导出 bundle 和选择输出格式；纯格式化规则归 `server/src/services/novel/export/novelExportFormatting.ts`，数据库 DTO 到导出 DTO 的映射归 `server/src/services/novel/export/novelExportMappers.ts`。
 - 新增业务能力优先通过模块门面或 `index.ts` 暴露，不从外部深链到其他模块内部文件。
 - 涉及自动导演、章节执行、Prompt、RAG、任务状态或前端投影的边界变化，应同步更新 Wiki 或模块 README。
 
@@ -28,6 +29,7 @@ Wiki 记录稳定规则，计划和检查点保留历史语境。模块治理以
 
 - 自动导演新增可执行命令时，先确定它属于 command、runtime、automation、recovery 还是 projection，再放入对应模块。
 - 章节生产链路新增质量检查时，先判断它属于热路径接收闸门、局部修复还是异步资产回灌。
+- 小说导出新增字段时，优先在 mapper 中补齐数据形状，在 formatting 中补齐 Markdown/TXT 表达，不把转换细节塞回导出入口服务。
 - 新文档如果解释长期规则，进入 `docs/wiki/`；如果只是某阶段实施清单，进入 `docs/plans/` 或 `docs/checkpoints/`。
 
 禁止或不推荐做法：
