@@ -16,6 +16,7 @@ const {
   getDirectorConfirmNovelCreateStepModule,
   getDirectorExecutionStepModule,
   getDirectorExecutionStepModuleSequence,
+  getDirectorStructuredOutlineStepModules,
   getDirectorPlanningStepModule,
   getDirectorTakeoverStepModule,
   validateDirectorWorkflowStepWriteContracts,
@@ -670,6 +671,95 @@ test("planning workflow keeps story macro and book contract as separate write no
   ]);
   assert.deepEqual(plan.steps[1].writes, ["book_contract"]);
   assert.deepEqual(plan.steps[1].dependsOn, ["story.macro.plan"]);
+});
+
+test("full-book autopilot treats deferred chapter task sheets as completed structured outline", async () => {
+  const module = getDirectorStructuredOutlineStepModules()
+    .find((item) => item.id === "volume.chapter_detail_bundle.generate");
+  assert.ok(module);
+  const context = {
+    taskId: "task-full-book-autopilot-outline",
+    novelId: "novel-full-book-autopilot-outline",
+    projectionHints: {
+      directorCanonicalState: {
+        task: {
+          id: "task-full-book-autopilot-outline",
+          novelId: "novel-full-book-autopilot-outline",
+          lane: "auto_director",
+          status: "running",
+          currentStage: "structured_outline",
+          currentItemKey: "chapter_detail_bundle",
+          currentItemLabel: "细化章节任务单与执行资源",
+          progress: 0.88,
+          checkpointType: null,
+          checkpointSummary: null,
+          lastError: null,
+          pendingManualRecovery: false,
+          cancelRequestedAt: null,
+        },
+        run: null,
+        runtime: null,
+        latestCommand: null,
+        activeStep: null,
+        seedPayload: {
+          directorInput: {
+            runMode: "full_book_autopilot",
+          },
+        },
+        chapterProgress: null,
+      },
+      directorFactBaseSummary: {
+        hasNovelProject: true,
+        candidate: {
+          batchCount: 0,
+          candidateCount: 0,
+          mode: null,
+          checkpointReady: false,
+        },
+        book: {
+          hasStoryMacro: true,
+          hasBookContract: true,
+          characterCount: 3,
+        },
+        outline: {
+          hasVolumeStrategy: true,
+          volumeCount: 1,
+          plannedChapterCount: 10,
+          beatSheetReady: true,
+          chapterListReady: true,
+          chapterDetailReady: false,
+          selectedChapterCount: 10,
+          completedDetailSteps: 0,
+          totalDetailSteps: 10,
+          syncedChapterCount: 0,
+          cursorStep: "chapter_detail_bundle",
+        },
+        chapterExecution: null,
+        repair: {
+          draftedChapterCount: 0,
+          reviewedChapterCount: 0,
+          committedChapterCount: 0,
+          needsRepairChapterCount: 0,
+          hasReviewableDrafts: false,
+        },
+        artifactSync: {
+          payoffArtifactCount: 0,
+          characterResourceArtifactCount: 0,
+        },
+      },
+    },
+  };
+
+  const completion = await module.inspectCompletion(context);
+  const progress = await module.inspectProgress(context);
+  const validation = await module.validateOutput(undefined, context);
+
+  assert.equal(completion.completed, true);
+  assert.equal(progress.status, "completed");
+  assert.equal(progress.ratio, 1);
+  assert.equal(progress.nextAction, "sync_execution_contracts");
+  assert.match(progress.label, /章节任务单将在章节执行前自动生成/);
+  assert.equal(validation.valid, true);
 });
 
 test("workflow step module exposes fact inspection, input, progress, recovery and commit hooks", async () => {

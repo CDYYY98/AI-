@@ -1,4 +1,5 @@
 import type { DirectorConfirmRequest } from "@ai-novel/shared/types/novelDirector";
+import { isFullBookAutopilotRunMode } from "@ai-novel/shared/types/novelDirector";
 import { getDirectorInputFromSeedPayload } from "../novelDirectorHelpers";
 import { getWorkflowStepCatalogEntry } from "@ai-novel/shared/types/directorWorkflowStepCatalog";
 import {
@@ -125,6 +126,9 @@ async function inspectStructuredOutlineFactState(
     };
   }
 
+  const { request: directorRequest } = await loadDirectorModuleState(context);
+  const isFullBookAutopilot = isFullBookAutopilotRunMode(directorRequest?.runMode);
+  const effectiveDetailReady = detailReady || (isFullBookAutopilot && chapterListReady);
   const ready = chapterListReady;
   return {
     readiness: ready
@@ -134,24 +138,26 @@ async function inspectStructuredOutlineFactState(
         evidence,
         nextAction: "run_chapter_list_generation",
       }),
-    completion: detailReady
+    completion: effectiveDetailReady
       ? completedFact(DIRECTOR_STRUCTURED_OUTLINE_STEP_IDS.chapter_detail_bundle, { evidence })
       : pendingFact(DIRECTOR_STRUCTURED_OUTLINE_STEP_IDS.chapter_detail_bundle, {
         ratio: detailRatio,
         evidence,
       }),
     progress: buildSimpleProgress({
-      status: detailReady ? "completed" : chapterListReady ? "partially_done" : "blocked",
-      ratio: detailReady ? 1 : detailRatio,
-      label: detailReady
-        ? "章节任务单与执行细化已就绪"
+      status: effectiveDetailReady ? "completed" : chapterListReady ? "partially_done" : "blocked",
+      ratio: effectiveDetailReady ? 1 : detailRatio,
+      label: effectiveDetailReady
+        ? isFullBookAutopilot && !detailReady
+          ? "章节任务单将在章节执行前自动生成"
+          : "章节任务单与执行细化已就绪"
         : chapterListReady && totalDetailSteps > 0 && completedDetailSteps > 0
           ? `已细化 ${completedDetailSteps}/${totalDetailSteps} 章，继续补齐剩余章节任务单`
           : chapterListReady
             ? "正在细化章节执行资源"
             : "等待章节列表完成",
       evidence,
-      nextAction: detailReady ? "sync_execution_contracts" : chapterListReady ? "run_chapter_detail_generation" : "run_chapter_list_generation",
+      nextAction: effectiveDetailReady ? "sync_execution_contracts" : chapterListReady ? "run_chapter_detail_generation" : "run_chapter_list_generation",
     }),
   };
 }
