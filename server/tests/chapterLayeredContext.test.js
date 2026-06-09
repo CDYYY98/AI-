@@ -620,3 +620,47 @@ test("chapter layered contexts carry volume mission, character duties and repair
   assert.ok(repairBlocks.some((block) => block.id === "repair_boundaries" && /read-only/.test(block.content)));
   assert.ok(repairBlocks.some((block) => block.id === "repair_boundaries" && /do not disclose/.test(block.content)));
 });
+
+test("chapter writer context renders milestone and scene-pattern quality guards", () => {
+  const contextPackage = createContextPackage();
+  const writeContext = buildChapterWriteContext({
+    bookContract: contextPackage.bookContract,
+    macroConstraints: contextPackage.macroConstraints,
+    volumeWindow: {
+      ...contextPackage.volumeWindow,
+      keyMilestoneGuards: [{
+        targetChapterRange: "5-8",
+        event: "第一次反压收益扩大",
+        status: "in_progress",
+        note: "只能逐步放大收益，不能在第 5 章一次性收完。",
+      }, {
+        targetChapterRange: "1-4",
+        event: "拿到半份情报",
+        status: "done",
+        note: "已经完成，后续不再重复追求。",
+      }],
+    },
+    contextPackage,
+  });
+  writeContext.completedMilestones = ["已拿到半份情报", "已确认黑市账户异常"];
+  writeContext.recentScenePatterns = ["凌晨+旅馆+蹲守", "街道办+盖章+被拒"];
+
+  const blocks = buildChapterWriterContextBlocks(writeContext);
+
+  assert.ok(blocks.some((block) => (
+    block.id === "chapter_mission"
+    && /Already completed/.test(block.content)
+    && /已拿到半份情报/.test(block.content)
+  )));
+  assert.ok(blocks.some((block) => (
+    block.id === "volume_window"
+    && /Volume key milestone guards/.test(block.content)
+    && /第一次反压收益扩大/.test(block.content)
+    && !/拿到半份情报/.test(block.content)
+  )));
+  assert.ok(blocks.some((block) => (
+    block.id === "opening_constraints"
+    && /Scene pattern blacklist/.test(block.content)
+    && /凌晨\+旅馆\+蹲守/.test(block.content)
+  )));
+});

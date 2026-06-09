@@ -97,6 +97,7 @@ function buildStoryWorldSlicePrompt(input: StoryWorldSlicePromptInput): { system
       "activeElements 首期只允许提炼为可叙事使用的线索、规则片段、地点线索或势力线索，不要发明新的世界模型。",
       "activeForces、activeLocations、appliedRules 都必须引用现有的 id。",
       "recommendedEntryPoints、pressureSources、conflictCandidates 可直接结合 bindingSupport 和当前故事意图裁剪。",
+      "自由文本字段不得直接塞入与当前故事时空不匹配的世界专有名词；如果世界原始设定里的地点、势力或术语不适合这本书，只保留抽象压力、规则或叙事功能。",
       "JSON 结构必须是：",
       "{",
       '  "coreWorldFrame": "这本书真正会用到的舞台概括",',

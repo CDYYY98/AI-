@@ -38,6 +38,7 @@
 - `c31513c1 fix(director): align cockpit progress labels` 已覆盖。本地书级自动化投影会优先使用 `dashboardView.currentAction` / runtime projection `currentLabel` / worker label，再兜底到 task label，避免把“正在自动审校第 N 章”覆盖成通用的“执行章节生成批次”；`directorBookAutomationProjection.test.js` 已覆盖 runtime chapter label 优先于 generic task label。
 - `5c11f1ae fix(novel): harden chapter patch repair fallback` 已覆盖。本地 patch repair prompt 已要求 `targetExcerpt` 必须是可唯一定位的完整句段，`ChapterPatchRepairService` 会把 apply 阶段的短片段、歧义片段或无效补丁转换为可恢复失败，章节 pipeline 对 `acceptance_gate_unavailable` 这类非正文片段风险会保留正文并登记复查债务，不调用局部 patch 或整章重写；`chapterPatchRepair.test.js` 和 `chapterRuntimePipeline.test.js` 均已有对应覆盖。
 - `0b02eece refactor(events): queue novel side effects` 已覆盖。本地已经存在 `server/src/events/sideEffects/`、`NovelSideEffectJob` Prisma 模型、`novelSideEffectWorker` 启停、事件处理器入队逻辑和 `eventSideEffects.test.js`，章节生成、卷规划保存和 pipeline 完成后的隐藏副作用不会再压在同步热路径上。
+- `c6a6bf11 feat(novel-gen): add quality guards for world pollution, milestone repeat, scene pattern, and volume pacing` 已同步低风险 Prompt/context 部分。本地新增 `completedMilestones`、`recentScenePatterns`、`keyMilestoneGuards` 共享类型字段，写章上下文会渲染已完成目标、场景模式黑名单和卷级关键节点守卫，writer prompt 也会禁止重复追求这些目标或复用场景模式；世界切片 prompt 增加不匹配专有名词污染防护。上游 `audit_chapter_continuity` 固定关键词扫描工具和 `rebuild_story_world_slice` agent 工具未直接同步，后续需按 AI-first 与本地世界观流程另行设计。
 
 ## 需要单独设计阶段的上游候选
 
