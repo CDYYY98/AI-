@@ -33,6 +33,7 @@
 - `ecd5869c fix(director): keep title warnings from overriding live progress` 已覆盖。本地自动导演进度面板通过 `directorTaskSnapshot` 读取 `dashboardView`，运行中或队列中的任务会抑制章节标题警告，避免旧标题修复提示覆盖实时进度；`novelAutoDirectorProgressPanelQueryKeys.test.mjs` 已覆盖 snapshot 查询、dashboard view 使用和标题警告抑制。
 - `33449f3a fix(director): route book automation through dashboard view`、`462caa44 fix(director): unify dashboard projection state`、`d520ed0d fix(director): keep live progress out of waiting state`、`374eca47 fix(director): stabilize progress snapshot cache` 已按本地结构覆盖。本地 `DirectorDashboardViewBuilder` 统一构建 dashboard view，书籍自动化投影、任务快照、任务中心、小说编辑页、工作区侧栏和任务抽屉均消费该投影；`directorBookAutomationProjection.test.js` 已覆盖 running、queued、waiting gate、旧 runtime snapshot 与陈旧 command 的组合状态，客户端侧也通过 snapshot query key 测试固定进度面板读取路径。
 - `7a758029 fix: chapter_detail_bundle validateOutput 在 JIT 模式下误报未完成` 已按本地结构移植。全书自动接管下，结构化大纲阶段允许在卷拆章列表已就绪时把章节任务单细化延后到章节执行前自动生成，避免 `chapterDetailReady=false` 误触发 `volume.chapter_detail_bundle.generate` 校验失败；本地新增 `directorWorkflowStepModules.test.js` 覆盖该场景，并把面向用户的进度文案改为“章节任务单将在章节执行前自动生成”。
+- `5f8680ff feat(logging): add log retention cleanup` 已按本地结构移植。服务端启动会异步清理旧文件日志，桌面端启动会清理桌面日志目录，LLM 调试日志和桌面主日志会在超过大小阈值时轮转；清理范围限定为 `.log`、`.meta.json`、`.llm.jsonl`、`.llm-repair.jsonl`，不会触碰数据库、小说数据、图片、备份或未知后缀文件。上游 `scripts/run-with-log.cjs` 的参数扩展未在本阶段同步，避免把未验证的开发脚本行为混入运行时日志清理。
 
 ## 需要单独设计阶段的上游候选
 
