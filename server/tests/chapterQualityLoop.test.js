@@ -211,3 +211,41 @@ test("buildChapterQualityLoopChapterUpdate clears stale repair state after a val
   assert.equal(riskFlags.qualityLoop.recommendedAction, "continue");
   assert.equal(riskFlags.qualityLoop.source, "repair_recheck");
 });
+
+test("buildChapterQualityLoopChapterUpdate records deferred quality debt attribution", () => {
+  const assessment = buildChapterQualityLoopAssessment({
+    chapterId: "chapter-debt",
+    chapterOrder: 7,
+    score: score({ coherence: 62, engagement: 66, overall: 67 }),
+    issues: [{
+      severity: "high",
+      category: "coherence",
+      evidence: "章节目标没有兑现。",
+      fixSuggestion: "补足章节目标。",
+    }],
+    evaluatedAt: "2026-06-09T00:00:00.000Z",
+  });
+  const attribution = {
+    firstFailureIssueCodes: ["PLOT_OBLIGATION_MISSING"],
+    secondFailureIssueCodes: ["PLOT_OBLIGATION_MISSING"],
+    firstFailureClassificationCode: "draft_obligation_unmet",
+    patchAnchorFailed: false,
+    sameObligationRepeated: true,
+    planMisaligned: true,
+    lengthVsContentDrift: false,
+    missingObligationKinds: ["plot"],
+  };
+
+  const update = buildChapterQualityLoopChapterUpdate({
+    riskFlags: null,
+    repairHistory: "[quality_loop old] status=invalid action=patch_repair",
+    chapterStatus: "needs_repair",
+    generationState: "reviewed",
+  }, assessment, "repair_recheck", "defer_and_continue", attribution);
+
+  assert.equal(update.chapterStatus, "pending_review");
+  assert.equal(update.repairHistory, undefined);
+  const riskFlags = JSON.parse(update.riskFlags);
+  assert.equal(riskFlags.qualityLoop.terminalAction, "defer_and_continue");
+  assert.deepEqual(riskFlags.qualityLoop.qualityDebtAttribution, attribution);
+});

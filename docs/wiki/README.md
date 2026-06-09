@@ -22,6 +22,7 @@ Wiki 不记录单次提交改了什么，也不替代 release notes。它只记�
 
 - [自动导演 Runtime 与恢复边界](./workflows/auto-director-runtime.md)
 - [章节生产链路](./workflows/chapter-production-chain.md)
+- [章节质量债务归因](./workflows/quality-debt-attribution.md)
 - [Creative Hub 边界](./workflows/creative-hub-boundary.md)
 
 ### Prompts

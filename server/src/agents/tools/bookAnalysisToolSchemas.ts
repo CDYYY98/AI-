@@ -73,3 +73,48 @@ export const getBookAnalysisFailureReasonOutputSchema = z.object({
   recoveryHint: toolSummarySchema,
   summary: toolSummarySchema,
 });
+
+export const analyzeQualityDebtAttributionInputSchema = z.object({
+  novelId: toolRequiredIdSchema,
+  startOrder: z.number().int().min(1).optional(),
+  endOrder: z.number().int().min(1).optional(),
+});
+
+export const qualityDebtChapterAttributionSchema = z.object({
+  chapterOrder: toolCountSchema,
+  chapterId: z.string(),
+  title: z.string(),
+  firstFailureIssueCodes: z.array(z.string()),
+  secondFailureIssueCodes: z.array(z.string()),
+  firstFailureClassificationCode: z.string().nullable(),
+  patchAnchorFailed: z.boolean(),
+  sameObligationRepeated: z.boolean(),
+  planMisaligned: z.boolean(),
+  lengthVsContentDrift: z.boolean(),
+  missingObligationKinds: z.array(z.string()),
+  primaryRootCause: z.enum(["A", "B", "D", "E", "unknown"]),
+});
+
+export const analyzeQualityDebtAttributionOutputSchema = z.object({
+  novelId: z.string(),
+  checkedRange: z.string(),
+  totalDeferredChapters: toolCountSchema,
+  attributedChapters: toolCountSchema,
+  rootCauseRatios: z.object({
+    A: z.number(),
+    B: z.number(),
+    D: z.number(),
+    E: z.number(),
+    unknown: z.number(),
+  }),
+  topFailureIssueCodes: z.array(z.object({
+    code: z.string(),
+    count: toolCountSchema,
+  })),
+  topMissingObligationKinds: z.array(z.object({
+    kind: z.string(),
+    count: toolCountSchema,
+  })),
+  chapters: z.array(qualityDebtChapterAttributionSchema),
+  recommendation: toolSummarySchema,
+});

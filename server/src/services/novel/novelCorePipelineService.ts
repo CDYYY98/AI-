@@ -792,6 +792,8 @@ export class NovelCorePipelineService {
               issues: final.issues,
               runtimePackage: chapterResult.runtimePackage,
               source: chapterResult.retryCountUsed > 0 ? "repair_recheck" : "pipeline_review",
+              terminalAction: chapterResult.pass ? null : "defer_and_continue",
+              qualityDebtAttribution: chapterResult.qualityDebtAttribution,
               taskId: runtimePayload.workflowTaskId,
             }).catch((error) => {
               logPipelineError("记录章节质量闭环状态失败", {

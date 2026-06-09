@@ -783,6 +783,16 @@ test("runPipelineChapterWithRuntime defaults to a single repair pass before stop
     assert.equal(reviewCount, 2);
     assert.equal(result.retryCountUsed, 1);
     assert.equal(result.pass, false);
+    assert.deepEqual(result.qualityDebtAttribution, {
+      firstFailureIssueCodes: ["CONTINUITY_GAP"],
+      secondFailureIssueCodes: ["CONTINUITY_GAP"],
+      firstFailureClassificationCode: null,
+      patchAnchorFailed: false,
+      sameObligationRepeated: true,
+      planMisaligned: false,
+      lengthVsContentDrift: false,
+      missingObligationKinds: [],
+    });
     assert.deepEqual(generationStates, ["reviewed", "reviewed"]);
     assert.deepEqual(savedDrafts, [
       {

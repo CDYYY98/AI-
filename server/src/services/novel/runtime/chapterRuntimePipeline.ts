@@ -39,6 +39,18 @@ export interface PipelineRuntimeInput extends ChapterRuntimeRequestInput {
   repairMode?: "detect_only" | "light_repair" | "heavy_repair" | "continuity_only" | "character_only" | "ending_only";
 }
 
+export interface QualityDebtAttribution {
+  firstFailureIssueCodes: string[];
+  secondFailureIssueCodes: string[];
+  firstFailureClassificationCode: string | null;
+  patchAnchorFailed: boolean;
+  sameObligationRepeated: boolean;
+  planMisaligned: boolean;
+  lengthVsContentDrift: boolean;
+  missingObligationKinds: string[];
+  budgetActionsConsumed?: Array<"patch_repair" | "chapter_rewrite" | "window_replan">;
+}
+
 export interface PipelineRuntimeResult {
   reviewExecuted: boolean;
   pass: boolean;
@@ -47,6 +59,7 @@ export interface PipelineRuntimeResult {
   runtimePackage: ChapterRuntimePackage | null;
   retryCountUsed: number;
   recoverableRepairFailure?: PipelineRecoverableRepairFailure | null;
+  qualityDebtAttribution?: QualityDebtAttribution | null;
 }
 
 export interface FinalizedRuntimeResult {
@@ -150,6 +163,11 @@ export async function runPipelineChapterWithRuntime(
   let pass = false;
   let latestLengthControl: ChapterRuntimePackage["lengthControl"] | undefined;
   let recoverableRepairFailure: PipelineRecoverableRepairFailure | null = null;
+  let firstFailureIssueCodes: string[] = [];
+  let firstFailureClassificationCode: string | null = null;
+  let firstMissingObligationKinds: string[] = [];
+  let repairEscalatedFromPatch = false;
+  let secondFailureIssueCodes: string[] = [];
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     await hooks.onCheckCancelled?.();
@@ -190,6 +208,7 @@ export async function runPipelineChapterWithRuntime(
         runtimePackage: null,
         retryCountUsed,
         recoverableRepairFailure: null,
+        qualityDebtAttribution: null,
       };
     }
 
@@ -226,7 +245,18 @@ export async function runPipelineChapterWithRuntime(
       break;
     }
 
+    if (attempt === 0) {
+      firstFailureIssueCodes = extractIssueCodes(latestResult.runtimePackage);
+      firstFailureClassificationCode = latestResult.runtimePackage.failureClassification?.code ?? null;
+      firstMissingObligationKinds = (latestResult.runtimePackage.obligationCoverage?.missing ?? [])
+        .map((item) => String(item.kind))
+        .filter((kind) => kind.trim().length > 0);
+    }
+
     if (shouldPauseForAcceptance || !autoRepair || repairMode === "detect_only" || attempt >= maxRetries) {
+      if (attempt > 0) {
+        secondFailureIssueCodes = extractIssueCodes(latestResult.runtimePackage);
+      }
       break;
     }
 
@@ -247,9 +277,11 @@ export async function runPipelineChapterWithRuntime(
     });
     if (repairResult.recoverableFailure) {
       recoverableRepairFailure = repairResult.recoverableFailure;
+      repairEscalatedFromPatch = repairResult.escalatedFromPatch;
       await deps.markChapterNeedsRepair(chapterId);
       break;
     }
+    repairEscalatedFromPatch = repairResult.escalatedFromPatch;
     content = repairResult.content;
     retryCountUsed += 1;
     await deps.saveDraftAndArtifacts(novelId, chapterId, content, "repaired", {
@@ -264,6 +296,16 @@ export async function runPipelineChapterWithRuntime(
 
   await syncFinalRetainedChapterArtifacts(deps, novelId, chapterId, latestResult.finalContent, artifactSyncMode);
 
+  const qualityDebtAttribution = !pass && firstFailureIssueCodes.length > 0
+    ? buildQualityDebtAttribution({
+        firstFailureIssueCodes,
+        secondFailureIssueCodes,
+        firstFailureClassificationCode,
+        firstMissingObligationKinds,
+        patchAnchorFailed: repairEscalatedFromPatch,
+      })
+    : null;
+
   return {
     reviewExecuted: true,
     pass,
@@ -272,6 +314,7 @@ export async function runPipelineChapterWithRuntime(
     runtimePackage: latestResult.runtimePackage,
     retryCountUsed,
     recoverableRepairFailure,
+    qualityDebtAttribution,
   };
 }
 
@@ -418,11 +461,13 @@ async function repairDraftContent(input: {
   };
 }): Promise<{
   content: string;
+  escalatedFromPatch: boolean;
   recoverableFailure?: PipelineRecoverableRepairFailure | null;
 }> {
   if (!input.forceFullRewrite && shouldDeferNonPatchableReviewRisk(input.runtimePackage, input.issues)) {
     return {
       content: input.content,
+      escalatedFromPatch: false,
       recoverableFailure: {
         chapterId: input.runtimePackage.chapterId,
         message: "章节接收判断暂时不可用，正文已保留，后续需要重新审校或人工复查。",
@@ -452,6 +497,7 @@ async function repairDraftContent(input: {
       input.runtimePackage.audit.openIssues.map((issue) => issue.code),
     );
   }
+  let patchAttemptFailed = false;
   if (!input.forceFullRewrite) {
     const patchRepairService = new ChapterPatchRepairService();
     try {
@@ -471,12 +517,14 @@ async function repairDraftContent(input: {
       });
       return {
         content: patched.content,
+        escalatedFromPatch: false,
         recoverableFailure: null,
       };
     } catch (error) {
       if (!(error instanceof ChapterPatchRepairFailedError)) {
         throw error;
       }
+      patchAttemptFailed = true;
       if (activeRepairMode !== "heavy_repair") {
         activeRepairMode = "heavy_repair";
         modeHint = getRepairModeHint(
@@ -515,6 +563,7 @@ async function repairDraftContent(input: {
   const nextContent = repaired.output.trim();
   return {
     content: nextContent || input.content,
+    escalatedFromPatch: patchAttemptFailed,
     recoverableFailure: null,
   };
 }
@@ -539,6 +588,50 @@ function issueLooksLikeNonPatchableReviewRisk(issue: ReviewIssue): boolean {
     || combined.includes("接收闸门未返回可用结构化结果")
     || combined.includes("章节接收判断不可用")
     || combined.includes("结构化判断缺失");
+}
+
+function extractIssueCodes(runtimePackage: ChapterRuntimePackage): string[] {
+  return (runtimePackage.audit.openIssues ?? [])
+    .map((issue) => issue.code)
+    .filter((code): code is string => typeof code === "string" && code.trim().length > 0);
+}
+
+const LENGTH_ISSUE_CODE_PREFIXES = ["LENGTH_", "length_"];
+
+function isLengthIssueCode(code: string): boolean {
+  return LENGTH_ISSUE_CODE_PREFIXES.some((prefix) => code.startsWith(prefix));
+}
+
+function buildQualityDebtAttribution(input: {
+  firstFailureIssueCodes: string[];
+  secondFailureIssueCodes: string[];
+  firstFailureClassificationCode: string | null;
+  firstMissingObligationKinds: string[];
+  patchAnchorFailed: boolean;
+}): QualityDebtAttribution {
+  const firstSet = new Set(input.firstFailureIssueCodes);
+  const secondSet = new Set(input.secondFailureIssueCodes);
+  const hasBothFailures = secondSet.size > 0;
+  const sameObligationRepeated = hasBothFailures
+    && firstSet.size > 0
+    && firstSet.size === secondSet.size
+    && [...firstSet].every((code) => secondSet.has(code));
+  const planMisaligned = input.firstFailureClassificationCode === "draft_obligation_unmet"
+    || input.firstFailureClassificationCode === "replan_required";
+  const firstHasLengthOnly = input.firstFailureIssueCodes.length > 0
+    && input.firstFailureIssueCodes.every(isLengthIssueCode);
+  const secondHasContentIssue = input.secondFailureIssueCodes.some((code) => !isLengthIssueCode(code));
+
+  return {
+    firstFailureIssueCodes: input.firstFailureIssueCodes,
+    secondFailureIssueCodes: input.secondFailureIssueCodes,
+    firstFailureClassificationCode: input.firstFailureClassificationCode,
+    patchAnchorFailed: input.patchAnchorFailed,
+    sameObligationRepeated,
+    planMisaligned,
+    lengthVsContentDrift: hasBothFailures && firstHasLengthOnly && secondHasContentIssue,
+    missingObligationKinds: input.firstMissingObligationKinds,
+  };
 }
 
 function buildRepairBibleFallback(runtimePackage: ChapterRuntimePackage): string {

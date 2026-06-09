@@ -45,6 +45,7 @@ export type AgentToolName =
   | "list_book_analyses"
   | "get_book_analysis_detail"
   | "get_book_analysis_failure_reason"
+  | "analyze_quality_debt_attribution"
   | "list_knowledge_documents"
   | "get_knowledge_document_detail"
   | "get_index_failure_reason"

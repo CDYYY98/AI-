@@ -39,6 +39,7 @@
 - `5c11f1ae fix(novel): harden chapter patch repair fallback` 已覆盖。本地 patch repair prompt 已要求 `targetExcerpt` 必须是可唯一定位的完整句段，`ChapterPatchRepairService` 会把 apply 阶段的短片段、歧义片段或无效补丁转换为可恢复失败，章节 pipeline 对 `acceptance_gate_unavailable` 这类非正文片段风险会保留正文并登记复查债务，不调用局部 patch 或整章重写；`chapterPatchRepair.test.js` 和 `chapterRuntimePipeline.test.js` 均已有对应覆盖。
 - `0b02eece refactor(events): queue novel side effects` 已覆盖。本地已经存在 `server/src/events/sideEffects/`、`NovelSideEffectJob` Prisma 模型、`novelSideEffectWorker` 启停、事件处理器入队逻辑和 `eventSideEffects.test.js`，章节生成、卷规划保存和 pipeline 完成后的隐藏副作用不会再压在同步热路径上。
 - `c6a6bf11 feat(novel-gen): add quality guards for world pollution, milestone repeat, scene pattern, and volume pacing` 已同步低风险 Prompt/context 部分。本地新增 `completedMilestones`、`recentScenePatterns`、`keyMilestoneGuards` 共享类型字段，写章上下文会渲染已完成目标、场景模式黑名单和卷级关键节点守卫，writer prompt 也会禁止重复追求这些目标或复用场景模式；世界切片 prompt 增加不匹配专有名词污染防护。上游 `audit_chapter_continuity` 固定关键词扫描工具和 `rebuild_story_world_slice` agent 工具未直接同步，后续需按 AI-first 与本地世界观流程另行设计。
+- `f1d22fb6 feat(phase0): 质量债务根因归因埋点 + analyze_quality_debt_attribution 工具` 已按本地结构同步。章节 runtime 会在最终未通过时记录首次/二次失败 issue code、patch 锚点失配、计划错位、同义务重复失败和长度/内容漂移等归因，质量闭环会把归因写入 `chapter.riskFlags.qualityLoop.qualityDebtAttribution`，并新增只读 `analyze_quality_debt_attribution` 工具用于汇总 deferred quality debt。同步时未引入上游 `audit_chapter_continuity` 固定关键词扫描工具，工具选择仍保持由本地 AI planner 决定，确定性代码只聚合已记录事实。
 
 ## 需要单独设计阶段的上游候选
 
