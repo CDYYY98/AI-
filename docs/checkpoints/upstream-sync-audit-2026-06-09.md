@@ -28,6 +28,10 @@
 - `ec7cc4e5 fix(chapter-runtime): prevent duplicate extraction budget stops` 已覆盖。本地后台章节资产同步会在抽取前写入 `running` 抢占 checkpoint，成功后标记完成，失败时标记 `failed`，并通过过期窗口释放陈旧运行记录，避免重复抽取导致预算误停。
 - `eb24ff9c perf(chapter-runtime): defer timeline extraction` 的热路径降负目标已按本地 monolithic runtime 结构覆盖：章节协调器通过 deferred artifact/background sync 避免把资产回灌压在正文热路径上。上游拆分出的 `ChapterContentFinalizationService` / `ChapterQualityGateService` 文件不在本地结构中，不能按文件级别照搬。
 - `890ff636 refactor(export): split novel export module` / `ea3c982d test(export): cover module entrypoint` 已按本地结构移植。保留 `server/src/services/novel/NovelExportService.ts` 作为兼容入口，将 TXT/文件名/Markdown 格式化移动到 `export/novelExportFormatting.ts`，将 DTO 映射和角色时间线分组移动到 `export/novelExportMappers.ts`，避免直接套用上游 `server/src/modules/export` 路径导致本地服务边界大范围变动。
+- `578b128d fix(character): forward model settings for visible profiles` 已覆盖。本地角色候选方案应用接口会从前端传递 `provider`、`model`、`temperature`，服务端 `novelCharacterPreparationRoutes` 会将其写入 `visibleProfileGeneration`，并由 `CharacterPreparationService` 传给可见档案生成流程；本地此前已有 `075b72ab fix: forward director model settings to character profiles`。
+- `d194a96a fix(director): ignore manual tasks in takeover entry` 已覆盖。本地 `resolveTakeoverDialogContextTaskId` 会过滤手动工作台任务，`novelEditAutomationStatus.test.mjs` 已覆盖接管弹窗上下文不使用手动任务 id，`NovelEdit.tsx` 也通过该 helper 决定接管入口任务。
+- `ecd5869c fix(director): keep title warnings from overriding live progress` 已覆盖。本地自动导演进度面板通过 `directorTaskSnapshot` 读取 `dashboardView`，运行中或队列中的任务会抑制章节标题警告，避免旧标题修复提示覆盖实时进度；`novelAutoDirectorProgressPanelQueryKeys.test.mjs` 已覆盖 snapshot 查询、dashboard view 使用和标题警告抑制。
+- `33449f3a fix(director): route book automation through dashboard view`、`462caa44 fix(director): unify dashboard projection state`、`d520ed0d fix(director): keep live progress out of waiting state`、`374eca47 fix(director): stabilize progress snapshot cache` 已按本地结构覆盖。本地 `DirectorDashboardViewBuilder` 统一构建 dashboard view，书籍自动化投影、任务快照、任务中心、小说编辑页、工作区侧栏和任务抽屉均消费该投影；`directorBookAutomationProjection.test.js` 已覆盖 running、queued、waiting gate、旧 runtime snapshot 与陈旧 command 的组合状态，客户端侧也通过 snapshot query key 测试固定进度面板读取路径。
 
 ## 需要单独设计阶段的上游候选
 
