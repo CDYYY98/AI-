@@ -154,6 +154,20 @@
 - `44ca0ed9` 仅涉及上游 style extraction status enum 迁移和 release note，当前本地已有 style extraction 状态链和设置页运行时卡片；如后续发现数据库枚举不一致，应单独按本地迁移历史审查，不能把上游迁移直接套进生产库。
 - `521d8420`、`dc722eff`、`34e14289`、`7c765f85` 属于上游 CLA 与许可证策略调整，不直接同步。当前本项目包含本地商业化、桌面发布、卡密/充值与私有部署约束，许可证和贡献协议需要用户明确法律/商业决策后再改，不能在技术同步阶段自动替换。
 - `a48a4a9f`、`05c978ea` 的 beta 预发布分支说明已由本地 `AGENTS.md` 的 `beta` 工作流覆盖。本地规则更完整，包含 feature branch、beta 集成、main 发布、桌面发布和 hotfix 回灌，不需要把上游 README 片段复制到用户 README。
+- `83c1ad73`、`7b18d931` 继续归入上游许可证/历史说明类提交，不直接同步。许可证措辞会影响商业分发、贡献入口和后续上架表述，应在用户明确法律策略后单独处理，不能作为技术同步附带修改。
+- `a44807ee` 的稳定技术点已覆盖，但不直接整体同步。该提交大规模移动 Postgres/SQLite migrations、图片存储、自动导演跟进中心和通道回调；本地已有 `AI_NOVEL_DATABASE_MODE`、`migrations.sqlite`、运行时迁移、S3/local 图片存储、`settingsAutoDirector`、钉钉/企微回调、跟进中心和相关测试，同时保留本地卡密、正式邮箱、桌面发布和商业模型配置。
+- `81455b65` 已覆盖。本地 `plannerOutputNormalization`、`plannerSchemas` 和 `structuredInvoke` 测试会保留 planner 输出中的 `objective` 别名，避免结构化输出被 singleton unwrap 或字段别名归一时丢失章节/场景目标。
+- `2a4c01a5` 属于上游测试期望收敛，已被本地当前 `structuredInvoke.test.js` 与模型协议/repair 兼容测试覆盖，不需要单独同步上游 README/release note 回退。
+- `c8ce913c` 已覆盖。本地任务中心和自动导演跟进中心已有 follow-up action 执行、批量继续、重试、幂等、风险校验、安全修复、section 过滤和路由测试；继续同步时应保持本地任务中心与商业模型路由的整合。
+- `b041cbb0` 已覆盖。本地结构化输出链路已经拆出 parser/repair、structured output 兼容、provider 协议透传、reasoning 处理和 JSON repair 测试；后续新增修复策略仍应走 Prompt Registry / structured output 边界，不加业务关键词兜底。
+- `901be686`、`f4fb4310` 已覆盖。本地自动导演在确认开书、接管、章节交接和结构化大纲恢复后会回填运行事实并继续到正确阶段，`NovelDirectorService`、接管 reset、auto execution runtime 和相关 recovery/structured outline 测试提供覆盖。
+- `9f9bff85`、`1081ff32`、`ff97a57c`、`986ff745` 已覆盖。本地 Style Engine 已有素材提取创建写法、知识库/拆书素材入口、后台提取任务、运行时设置、Prompt Compiler 边界、写法资产恢复、Style Engine V2 文档和任务中心适配；不需要按上游旧页面结构重排设置页。
+- `e2e25298` 已覆盖。本地 `RagIndexService` 与 `ragJobListing.test.js` 会处理 stale knowledge indexing task 状态，避免知识库任务列表长期显示错误运行态。
+- `4dfd72cb` 已覆盖。本地 Prompt Registry 使用声明版本解析资产，`prompting.test.js` 覆盖 style prompt 按 asset version 查询，符合 Prompt Governance 规则。
+- `2a90f5b9` 已覆盖。本地小说编辑页和 `novelEditTakeover.shared.ts` 会在自动导演章节执行/审核/修复完成后显示“进入章节执行”和“退出导演模式”入口，不再把已完成任务误导成继续自动导演。
+- `09fa65d2`、`df97ee6d`、`a1ab5f3d`、`f41be92d`、`dda670ac` 属于旧桌面 release/版本号阶段提交，本地已按当前正式发布链吸收通用技术点：NSIS 短路径模板、asar verifier、unsigned release 显式 opt-in、pnpm 10/Node 24 workflow、`Setup.exe` 安装版优先和 `CDYYY98/AI-` 更新源。上游旧版本号和 README 状态不直接同步。
+- `46be98fb`、`6bfe3bcb`、`6f3bee8e` 属于上游 README 下载区、截图或桌面入口展示提交，不直接同步。本地 README 已指向 `CDYYY98/AI-` Releases、正式用户安装版和本地产品名，不能被上游素材或下载入口覆盖。
+- `a4f14c83`、`926735c6`、`3a91ab19` 继续归入上游许可证/发布说明类提交，不直接同步。若后续要调整 Apache/AGPL/CLA 表述，应由用户确认商业发布策略后单独做法律文档阶段。
 
 ## 需要单独设计阶段的上游候选
 
