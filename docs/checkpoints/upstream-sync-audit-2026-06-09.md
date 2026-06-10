@@ -168,6 +168,23 @@
 - `09fa65d2`、`df97ee6d`、`a1ab5f3d`、`f41be92d`、`dda670ac` 属于旧桌面 release/版本号阶段提交，本地已按当前正式发布链吸收通用技术点：NSIS 短路径模板、asar verifier、unsigned release 显式 opt-in、pnpm 10/Node 24 workflow、`Setup.exe` 安装版优先和 `CDYYY98/AI-` 更新源。上游旧版本号和 README 状态不直接同步。
 - `46be98fb`、`6bfe3bcb`、`6f3bee8e` 属于上游 README 下载区、截图或桌面入口展示提交，不直接同步。本地 README 已指向 `CDYYY98/AI-` Releases、正式用户安装版和本地产品名，不能被上游素材或下载入口覆盖。
 - `a4f14c83`、`926735c6`、`3a91ab19` 继续归入上游许可证/发布说明类提交，不直接同步。若后续要调整 Apache/AGPL/CLA 表述，应由用户确认商业发布策略后单独做法律文档阶段。
+- `36680a44`、`0ee55a1e` 已覆盖。本地章节运行时已有 `finalizing` SSE 状态、章节审校/修复结果面板、Prompt trace / debug logging、章节上下文预算、接收闸门、artifact sync checkpoint 和 `ChapterRuntimeCoordinator` 测试；继续同步时不应把上游旧版 scene streaming 或审校页面状态覆盖回来。
+- `6ba5386e` 已覆盖。本地卷规划已支持 beat sheet、按节奏段分块生成章节列表、单 beat 重写、章节跨度校验、移动端布局和 `volumeChapterListChunking.test.js` / `volumeBeatSheetChapterBudget.test.js` 等测试；无需再按上游提交重复拆分 hooks。
+- `b4783fa5` 已覆盖。本地结构化大纲恢复已有独立恢复模块、卷节奏板/章节列表/章节详情阶段事实、retry 恢复、workflow structured outline progress 测试和前端卷规划草稿工具；继续同步应以本地 workflow step runtime 作为权威。
+- `830724a3` 已覆盖。本地章节编辑器 V2、AI 改写候选、工作区诊断、导演面板、章节标题修复命令、任务抽屉说明和章节详情上下文测试已经吸收该方向；上游提交中的大页面重排不能直接覆盖本地商业化页面与移动适配。
+- `59f11406` 已覆盖并部分归入后续本地架构。本地已有 planner state flow、replan decision Prompt、task recovery routes、CanonicalState/StateCommit/StateVersionLog、章节 runtime coordinator、自动执行失败恢复和任务恢复对话框；同时本地没有保留上游 `.tmp` 临时日志，避免把临时产物重新带回版本库。
+- `6f6a8d11` 已覆盖。本地已有 takeover reset、章节执行状态流、结构化输出归一、小说导出格式化/类型、状态 schema 兼容和导出服务测试；同步时必须保护本地导出与桌面/卡密运营配置。
+- `e0596cda` 已覆盖。本地小说工作区接管入口状态已经和自动导演进度、任务抽屉、完成退出入口整合，不需要复制上游较早的提示文案或 AGENTS 片段。
+- `bfc09617` 已覆盖。本地默认安装不再把 Electron runtime 当普通应用依赖打进 staged app，`verify-desktop-package.cjs` 明确检查 staged app 不含 `node_modules/electron`；`package.json` 也保留只在桌面包内准备 runtime 的脚本边界。
+- `0a375b64`、`ca9707e3`、`5dd97f03`、`0623ac13`、`6f29290d` 已覆盖。本地桌面构建链已有 NSIS 模板短路径镜像、asar verifier 从 electron-builder 依赖解析、electron-builder 内部模块解析兜底、beta/release workflow Python 环境、桌面 bootstrap/update/import/model gate 和安装包校验脚本；旧 beta 版本号和上游发布身份不直接同步。
+- `127f7c93` 已覆盖。本地已有桌面开发 shell、preload bridge、runtime server、desktop paths、`dev:desktop`/`build:desktop:all` 脚本和正式远端 API 打包入口；同步时继续保持 `图灵网文工作台` 与 `CDYYY98/AI-` 发布身份。
+- `bf6dafcf` 已由本地 `AGENTS.md` 的 Desktop Branch Completion Workflow 覆盖。`desktop-dev` 被视作已完成候选，后续桌面改动应走短分支 -> `beta` -> `main`，不再沿用上游临时桌面分支策略。
+- `9ab8c1f7` 已覆盖。本地 `.gitignore` 已排除 `*.zip`、`*.tar.gz`、`.pnpm-store/` 和构建产物，`git ls-files` 确认 `.tmp`、`server/.tmp`、`desktop/build`、临时压缩包和 pnpm store 没有继续被跟踪。
+- `bb8bed09` 已覆盖。本地 `shared/tsconfig.json` 已包含顶层 `*.ts` 和 `types/**/*.ts`，能编译 `shared/index.ts`、`shared/imagePrompt.ts` 等顶层共享模块。
+- `0321caf7`、`b1ce8e00` 已覆盖。本地角色图像库支持列出、设为主图、删除图片资产；服务端 `ImageGenerationService` 先持久化生成文件再进入事务，删除时会清理本地/S3 存储文件并保留数据库一致性。
+- `f67fb535` 已覆盖。本地已有角色图像提示词优化 PromptAsset、图片 prompt shared 类型、图片路由和角色图片弹窗优化；后续图片能力扩展仍应和图片成本、供应商和封面工作流一起评估。
+- `e333e3e5` 已覆盖。本地 RAG runtime settings、embedding settings、图片 provider settings、运行时兼容 bootstrap 和设置页导航卡已经把运行配置收拢到应用设置；保留本地正式邮箱、模型路由、账户类型模型和卡密运营入口。
+- `1f27e43e` 属于上游删除误跟踪文本样本/临时产物的提交，本地当前没有跟踪这些样本文本或 `.tmp` 产物，不需要同步。
 
 ## 需要单独设计阶段的上游候选
 
