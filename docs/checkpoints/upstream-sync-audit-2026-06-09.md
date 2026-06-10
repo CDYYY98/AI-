@@ -70,6 +70,20 @@
 - `02ebeffa feat: complete character visible profiles`、`fadcb567 feat: add guidance for character profile completion`、`8bc28ddf fix: surface character profile completion preview`、`27f05913 fix: allow guided character profile overwrites` 已覆盖。本地已有外显资料生成/批量生成/预览确认/显式覆盖写入接口、角色资产工作区展示和 `characterVisibleProfile.test.js`；角色阵容应用后还会后台补齐外显资料与角色动态。
 - `eb405602 fix(novel): resync character resources after content changes` 已按本地事件副作用体系覆盖。本地 `chapter:updated` / `chapter:drafted` 事件会驱动章节草稿角色同步，`event-side-effect-boundaries.md` 规定同一章节正文 hash 相同才复用同步任务，正文或更新时间变化必须生成新同步任务。
 - `8e7eedee 修复自动导演运行态误显示继续`、`8e240cf1 修复自动导演步骤内容刷新`、`d8f6d2a4 优化自动导演方案确认弹窗` 已覆盖。本地自动导演页面优先读取 `DirectorDashboardView`，运行/排队状态不会被章节标题提醒或旧投影覆盖成“等待继续”；候选方案确认弹窗已拆出独立 candidate dialog 和候选 mutation hook。
+- `162b47e0 test: split fast and integration suites` 已覆盖。本地 `server/scripts/run-tests.cjs` 支持 `fast`、`integration`、`all`，`server/package.json` 将默认 `test` 指向 fast 套件，并保留 `test:integration` / `test:all`，适合后续同步阶段做更窄验证。
+- `97ba2bb6 chore: ignore local trae workspace` 已覆盖。本地 `.gitignore` 已包含 `.trae/`，不会把本地编辑器/工作区产物带入提交。
+- `bfa8fbba fix(novel): improve director progress and chapter cleanup` 已按本地结构覆盖。本地 `NovelWorkspaceRail`、小说页和任务中心都读取 `dashboardView`/snapshot 投影，章节删除会清理 `chapter` 和 `chapter_summary` RAG 索引，章节结构卡也提供未匹配章节清理入口；未同步其中上游 README 与桌面版本号。
+- `0de50aee fix(client): unify dialog layout and recovery prompt` 已覆盖。本地 `client/src/components/ui/dialog.tsx` 提供 `AppDialogContent`，任务恢复弹窗、角色/知识库/设置等对话框已使用统一布局；恢复弹窗明确提示系统不会自动继续中断任务，需用户确认。
+- `2ef07ebf feat: add prompt management workbench`、`3554d206 fix: constrain prompt workbench scrolling`、`d458c88a feat: add prompt material export layer` 已覆盖。本地已有管理员 Prompt 工作台路由、Prompt 目录/预览、材料导出、滚动约束和 `novelPromptMaterials.test.js` / `promptWorkbench.test.js`，并保持 Prompt Registry 作为产品级 Prompt 入口。
+- `b132d05a feat: add prompt addendum management`、`3d193a9f fix: prioritize addendum prompts in catalog`、`b48b1511 fix: group novel addendum selector`、`bc730738 fix: clarify prompt addendum availability` 已覆盖。本地已存在 `PromptAddendum` Prisma 表和迁移、`PromptAddendumService`、前端 `PromptAddendumPanel`、支持/不支持提示、全局与单书补充词分组，以及 runner 注入测试。
+- `35ecd273 feat(dev): show startup gate while server boots` 已覆盖。本地 `ServerStartupGate` 包裹客户端入口，桌面端还保留 `DesktopBootstrapShell` 和本地服务启动状态文案，用于避免服务启动期间白屏。
+- `73f31938 chore(desktop): add github release trigger`、`bf4c9efd ci(desktop): reuse staged app during release packaging`、`140316b3 ci(desktop): sync release notes to GitHub releases` 已按本地发布身份覆盖。本地已有 `scripts/trigger-desktop-release.cjs`、`scripts/update-desktop-release-notes.cjs`、`publish:desktop:*:reuse-stage` 脚本和 GitHub Release notes 同步；workflow 保留 `CDYYY98/AI-`、`图灵网文工作台` 和本地版本/标签规则，不同步上游 owner、README 状态或桌面版本号。
+- `8592a7cc fix(director): resume candidate step runners` 已覆盖。本地 `novelDirectorRetry.test.js` 覆盖候选阶段任务从 `candidate_selection_required` 恢复，`novelDirectorCandidateRuntime` 会按候选阶段 checkpoint 重新进入对应 runner。
+- `e0cf29f5 Fix projection artifact completion checks` 已覆盖。本地 `novelDirectorRuntimeOrchestrator` 在后台投影步骤会轮询 `module.inspectCompletion`，直到投影事实完成或超时，避免只看即时产物导致误判。
+- `45ead551 Fix scoped chapter execution completion` 已覆盖。本地章节草稿、审校、修复和状态提交模块都通过 active auto execution range 计算完成度，`directorWorkflowStepModules.test.js` 覆盖范围化章节完成、自动审校关闭和质量修复完成判定。
+- `0a85be2b fix: archive completed auto director reminders` 已覆盖。本地小说页提供“完成并收起”自动导演提醒动作，`novelEditAutomationStatus.test.mjs` 覆盖已完成/已失败/已取消任务的归档可见性。
+- `eb15c17e fix(director): align chapter detail and cancellation states`、`542cdd81 refactor director display state and unify fact-first progress projection`、`ff00630e refactor(director): prefer data-driven recovery checks`、`abc46090 refactor(director): unify command execution runtime` 已按本地结构覆盖核心目标。本地已有 `DirectorCommandExecutor`、`DirectorStateStore`、`DirectorDisplayStateBuilder`、`DirectorFactSummaryService`、`DirectorDashboardViewBuilder`、`DirectorCoreStepModuleRuntime` 和模块化 `inspectCompletion` / `recover`，客户端小说页、侧栏、任务抽屉、任务中心均消费 fact-first dashboard/display state；未同步上游大规模 TASK/README/版本号整理。
+- `38d7024a`、`4de4d39a`、`67e079b7`、`85990541`、`7f08a873` 属于上游桌面版本号、beta release 摘要或 README 截图/状态补充，不直接同步。当前本地 release note、README 最新更新、桌面版本和展示素材必须由本地产品节奏维护。
 
 ## 需要单独设计阶段的上游候选
 
