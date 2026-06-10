@@ -237,6 +237,28 @@
 - `c06cfcc6` 已覆盖。本地已有 Prompt Registry / Workflow Registry wiki、治理测试和 README release notes 工作流；不把上游 README 单行文案覆盖到本地首页。
 - `1c44e174` 已覆盖。本地 `novelStructuredOutlineRepairPrompt`、结构化大纲恢复 cursor、structured outline step modules、自动导演 structured outline backfill 和相关 validation tests 已经覆盖结构化大纲修复。
 - `b59441d5`、`ab7b0718`、`61135669` 已覆盖。本地 `server/src/prompting/` 已作为产品级 Prompt 唯一入口，`PromptAsset`、`promptRunner`、workflow registry、tool schema 拆分、prompt governance tests 和 Prompt Registry wiki 均已存在；后续新增 Prompt 仍按本地治理规则迁入，不 cherry-pick 上游早期重构。
+- `49dda4fd` 已覆盖。本地故事模式管理、故事模式 profile、小说基础信息、角色准备、卷规划和 setup status 已有后续实现；同步时保留本地创作账户/体验账户和商业模型设置。
+- `043b81c3`、`494cf879` 已覆盖。本地 `client/src/api/novel/*`、卷规划工作台、`NovelVolumeService`、volume generation orchestrator、workspace document 和 persistence 已经承接分阶段卷规划生成。
+- `b71d2c22` 已覆盖。本地已有角色动态 shared types、角色动态服务、章节/卷动态提取、角色资源账本与章节上下文接入；不需要按上游早期 Prisma 迁移重放。
+- `6c1c1360`、`8e70360b`、`08a1a8c8`、`ce6f80da`、`23382384`、`25305e49`、`f254a7ce` 属于上游 README、功能截图或项目愿景重写，不直接同步到本地商业 README。
+- `10c915ec` 已覆盖。本地书级定位/开书框架已经通过 `novelFraming` Prompt、基础信息表单、书籍定位建议、story macro 和测试集成。
+- `22323d75` 部分覆盖且跳过临时文件。本地 `.env.example`、RAG 设置页、Qdrant/embedding 配置、知识库页面和部署说明已有本地版本；上游 `.codex-backups` 与临时调试脚本不进入本仓库。
+- `66475987` 已覆盖。本地角色资产工作区、角色阵容选项、补充角色、模型路由能力和 DeepSeek/中转模型配置已经存在；不回放上游旧 schema 迁移。
+- `0b5c7640` 已覆盖且不直接同步。本地 `docs/`、wiki、architecture/plans/checkpoints 已经按当前项目维护；上游根目录清理和旧设计文档搬迁不能覆盖本地同步审计与发布文档。
+- `8bbb7e6f` 已覆盖。本地结构化输出、provider capabilities、schema helpers、JSON repair、Prompt Registry 和路由 schema 已经更完整；不引入上游早期 checkpoint 文档。
+- `87c50a52` 已覆盖。本地运行时上下文块、章节规划记忆、state conflict/open conflict、planner persistence 和 chapter runtime routes 已经支持更强的规划记忆上下文。
+- `b9a9a453` 已覆盖。本地写法提取、书籍分析发布到写法、写法公式编辑、StyleProfileService 和 style-engine tests 已存在。
+- `ad23e43f` 已覆盖。本地图片 API、图片资产存储、风格推荐卡、规划输出归一化和本地图片忽略规则已存在；图片商业化扩展仍按本地成本策略单独评估。
+- `a8479334` 已覆盖。本地自动导演候选流、命令执行、runtime pipeline、candidate/takeover/validation 和相关 tests 已经取代上游早期实现。
+- `cd646cdd` 已覆盖。本地写法公式 UI 已拆成 editor/rules/sidebar/workbench 等模块，并接入章节运行时与 StyleRuntimeResolver；不再同步上游旧页面拆分。
+- `1e2b8efd` 已覆盖。本地 style engine、anti-AI 规则、style binding/compiler/runtime resolver、写法工作台和 style tests 已经吸收写法公式替代工作流。
+- `f5f3456f`、`cfc954d1` 跳过。本地根目录已经清理过临时调试文件；上游该组包含历史 markdown/临时文件痕迹，不作为同步来源。
+- `667436b1` 已覆盖。本地世界观切片、世界生成分步组件、世界工作区 tabs、NovelWorldSliceService、世界结构/可视化和相关 tests 已存在。
+- `69ae36c6` 已覆盖。本地 story macro、任务中心适配、KnowledgeTaskAdapter、任务归档、RAG index 和 story planning workflow 已有后续实现；保留本地卡密/任务中心商业流程。
+- `4c503782` 已覆盖。本地书籍分析命令/查询/看门狗、RAG runtime settings、知识库文档/设置/运维 tabs、RagIndexService 和 book analysis tests 已存在。
+- `c9671594` 已覆盖。本地流派管理、标题工坊、story macro、世界观生成、LLM debug logging 和相关 shared types 已经支持流派/标题/规划流程。
+- `1639fdc0` 已覆盖。本地小说阶段 tabs、基础信息拆分、章节运行时、路由拆分、SSE phase 和 planner normalization 已有后续实现。
+- `bc34468a` 已覆盖且不直接同步。本地模型路由、world consistency/visualization、规划服务、状态服务和相关 tests 已经存在；README/TASK 历史叙述不覆盖本地文档。
 
 ## 需要单独设计阶段的上游候选
 
