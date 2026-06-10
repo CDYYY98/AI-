@@ -56,6 +56,13 @@
 - `56d099d4 Stop treating urgent payoff as replan failure` 已覆盖。本地 `ReplanSignal` 不包含 `urgent_payoff`，`advance_payoff`、`urgentPayoffs` 和 `urgentCount` 只作为生成职责信号；只有逾期 payoff、显式 `nextAction=replan`、阻塞审计或人工请求才会触发重规划。
 - `ddbb22ee fix(novel): recover from invalid chapter patch repairs` 已覆盖并增强。本地 `ChapterPatchRepairService` 会把结构化 prompt 校验失败和 patch apply 异常转换成 `ChapterPatchRepairFailedError`，`replacement` 允许为空以删除唯一片段，章节生产链 wiki 已明确无效局部补丁应升级为可恢复失败而不是原始 Zod 错误。
 - `1616a0c7 fix(director): stabilize retry recovery and task targeting` 已按本地结构覆盖主要目标。本地已有 `novelWorkflowAutoDirectorReconciliation`、自动执行 pipeline 状态同步、retry 后强制自动导演恢复测试、前端以具体 director task 作为继续/重试/质量修复 action target，以及独立的 auto-director follow-up 查询 key/API；未同步其中的上游桌面版本号和页面命名整理。
+- `71587ed1 docs: update agent workflow rules`、`79deed79 docs(architecture): add server split governance` 已被本地 `AGENTS.md` 和项目 wiki 规则覆盖。本地规则更细，额外包含数据保护、AI-first、分支、beta、桌面发布和 release note 工作流，不应被上游较短规则覆盖。
+- `8c63e26e docs: add project wiki and archive stale docs`、`e8efdadf docs: remove garbled archived auto-director docs` 已覆盖。本地 `docs/wiki/` 已建立 architecture/debugging/product/prompts/rag/workflows 目录，旧的 garbled auto-director 归档文件当前不存在；本地还新增了商业化、桌面更新、模型选择和上游同步保留策略等本地专属 wiki。
+- `4f171a53 refactor(director): remove runtime queue helper leftovers` 已覆盖。本地已移除 `DirectorRuntimeExecutionHelpers.ts`，保留 `DirectorCommandServiceHelpers.ts` 作为命令服务 helper；不需要再按上游路径做删除。
+- `b7f6f509 refactor(director): group auto execution modules`、`4e13be17 refactor(director): split workflow step modules`、`b023ffeb feat(director): centralize workflow step catalog` 已覆盖。本地已使用 `server/src/services/novel/director/automation/`、`workflowStepRuntime/` 拆分模块、`WorkflowStepModuleRegistry` 和 shared `directorWorkflowStepCatalog`，并有 `directorWorkflowStepModules.test.js`、`directorWorkflowStepCatalog.test.js` 覆盖模块注册和目录入口。
+- `348432c4 test: verify streamlined chapter pipeline status` 已覆盖。本地已有章节 runtime、pipeline job state 和前端章节执行状态展示调整，相关测试覆盖章节 runtime coordinator、pipeline 状态、任务活动标签和自动导演状态投影。
+- `6368025a feat: add artifact sync modes and checkpoints`、`24b266de feat: unify chapter artifact delta sync`、`ca6c6f3c feat: add lightweight chapter acceptance gate`、`a5529ff6 feat: constrain chapter repair loop from acceptance gate` 已覆盖并扩展。本地已有 `ChapterArtifactSyncCheckpoint`、`ChapterArtifactBackgroundSyncService`、`ChapterArtifactDeltaService`、`ChapterAcceptanceGateCacheService`、`ChapterAcceptanceAssessmentService` 和非 patchable `acceptance_gate_unavailable` 处理；`chapterAcceptanceGateCacheService.test.js`、`chapterRuntimePipeline.test.js`、`chapterStructuredOutputNormalization.test.js` 以及章节生产链 wiki 覆盖了缓存、抽取、接收闸门和修复边界。
+- `afb49825 docs: plan chapter output pipeline optimization` 的稳定结论已吸收到本地章节生产链和上游同步策略 wiki。当前不再同步上游临时 plan 文档，避免把已经实现或被本地结构替代的计划重新当作待办。
 
 ## 需要单独设计阶段的上游候选
 
@@ -114,7 +121,7 @@
 
 ### 桌面发布、README 状态和上游版本号提交
 
-`7298e7c8`、`bff7f000`、`6b2a7306`、`23ede003`、`69cedb0a`、`a22db04a`、`efa11eaf`、`dea07265`、`b0dd3ff7`、`d6725d27`、`4ba82892` 这类提交不应按上游直接同步。它们主要调整上游 README、release notes、上游桌面版本号和 GitHub Release workflow。当前本地桌面发布通道已经指向 `CDYYY98/AI-`，产品名是 `图灵网文工作台`，`desktop/package.json` 版本由本地正式发布节奏控制；同步上游 owner/repo、默认产品名或版本号会破坏本地客户端自动更新和品牌配置。后续只可按需吸收通用 workflow 技术点，例如 Node 24 或打包校验步骤，不能同步上游发布身份。
+`7298e7c8`、`bff7f000`、`6b2a7306`、`23ede003`、`69cedb0a`、`a22db04a`、`efa11eaf`、`dea07265`、`ce4d92b6`、`b0dd3ff7`、`d6725d27`、`4ba82892` 这类提交不应按上游直接同步。它们主要调整上游 README、release notes、上游桌面版本号和 GitHub Release workflow。当前本地桌面发布通道已经指向 `CDYYY98/AI-`，产品名是 `图灵网文工作台`，`desktop/package.json` 版本由本地正式发布节奏控制；同步上游 owner/repo、默认产品名或版本号会破坏本地客户端自动更新和品牌配置。后续只可按需吸收通用 workflow 技术点，例如 Node 24 或打包校验步骤，不能同步上游发布身份。
 
 ### `a20db70e feat(dev-tools): 新增章节正文一键重置功能供测试重跑`
 
