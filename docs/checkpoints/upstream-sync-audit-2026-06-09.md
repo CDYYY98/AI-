@@ -63,12 +63,23 @@
 - `348432c4 test: verify streamlined chapter pipeline status` 已覆盖。本地已有章节 runtime、pipeline job state 和前端章节执行状态展示调整，相关测试覆盖章节 runtime coordinator、pipeline 状态、任务活动标签和自动导演状态投影。
 - `6368025a feat: add artifact sync modes and checkpoints`、`24b266de feat: unify chapter artifact delta sync`、`ca6c6f3c feat: add lightweight chapter acceptance gate`、`a5529ff6 feat: constrain chapter repair loop from acceptance gate` 已覆盖并扩展。本地已有 `ChapterArtifactSyncCheckpoint`、`ChapterArtifactBackgroundSyncService`、`ChapterArtifactDeltaService`、`ChapterAcceptanceGateCacheService`、`ChapterAcceptanceAssessmentService` 和非 patchable `acceptance_gate_unavailable` 处理；`chapterAcceptanceGateCacheService.test.js`、`chapterRuntimePipeline.test.js`、`chapterStructuredOutputNormalization.test.js` 以及章节生产链 wiki 覆盖了缓存、抽取、接收闸门和修复边界。
 - `afb49825 docs: plan chapter output pipeline optimization` 的稳定结论已吸收到本地章节生产链和上游同步策略 wiki。当前不再同步上游临时 plan 文档，避免把已经实现或被本地结构替代的计划重新当作待办。
+- `de0f5b11 Fix scene chapter length budget enforcement` 与 `1426a4fa feat(runtime): harden chapter execution contracts` 已按本地结构覆盖。本地使用 `shared/types/chapterLengthControl.ts`、`ChapterExecutionContractService`、`GenerationContextAssembler`、章节接收闸门和 `chapterLengthControl.test.js` / `generationContextAssembler.test.js` / `chapterLayeredContext.test.js` 保持目标字数、场景卡和结构义务一致。
+- `4c6ab42b fix(director): rerun candidate refinement commands` 已覆盖。本地候选方向命令支持 `refine_candidates`、`patch_candidate`、`refine_titles`，候选 runtime 会对重跑命令设置 `reuseCompletedStep: false`，`novelDirectorCandidateRuntime.test.js` 和 `novelDirectorRuntimeOrchestrator.test.js` 覆盖强制重跑已完成节点。
+- `df5c9c72 fix: sync chapter details incrementally` 已覆盖。本地 `VolumeChapterSyncService` 会通过 `VolumeChapterPlan.chapterId` 保持规划章节和执行章节身份链接，增量同步 `targetWordCount`、`taskSheet`、`sceneCards` 等执行资产，`chapter-identity-and-planning-boundary.md` 记录了不能只靠标题/序号匹配的边界。
+- `ac903737 fix: soften chapter title diversity failures`、`a5cd3616 修复章节列表结构化输出兼容` 已覆盖。本地章节列表 prompt、`volumeGenerationSchemas` 和标题多样性检测会把重复标题结构降级为可修复警告/待修复检查点，结构化输出 schema 已支持中文字段和常见别名。
+- `02ebeffa feat: complete character visible profiles`、`fadcb567 feat: add guidance for character profile completion`、`8bc28ddf fix: surface character profile completion preview`、`27f05913 fix: allow guided character profile overwrites` 已覆盖。本地已有外显资料生成/批量生成/预览确认/显式覆盖写入接口、角色资产工作区展示和 `characterVisibleProfile.test.js`；角色阵容应用后还会后台补齐外显资料与角色动态。
+- `eb405602 fix(novel): resync character resources after content changes` 已按本地事件副作用体系覆盖。本地 `chapter:updated` / `chapter:drafted` 事件会驱动章节草稿角色同步，`event-side-effect-boundaries.md` 规定同一章节正文 hash 相同才复用同步任务，正文或更新时间变化必须生成新同步任务。
+- `8e7eedee 修复自动导演运行态误显示继续`、`8e240cf1 修复自动导演步骤内容刷新`、`d8f6d2a4 优化自动导演方案确认弹窗` 已覆盖。本地自动导演页面优先读取 `DirectorDashboardView`，运行/排队状态不会被章节标题提醒或旧投影覆盖成“等待继续”；候选方案确认弹窗已拆出独立 candidate dialog 和候选 mutation hook。
 
 ## 需要单独设计阶段的上游候选
 
 ### `42e6f726` / `b5c53c62` 懒规划与多阶段质量修复闭环
 
 这组提交把章节任务单生成、分层缓存、N+1 预取、质量修复闭环和 JIT 规划深度绑定到上游较新的 pipeline 结构。当前本地已经吸收了“章节任务单可延后到执行前生成”的低风险校验修复，但未直接迁入完整懒规划架构。后续若要继续同步，应作为“章节生产链性能与 JIT 规划”单独阶段处理，先明确与本地自动导演、Prompt Registry、质量债务预算和桌面端内存约束的关系。
+
+### `8fe2da07 Remove chapter contract from draft generation`
+
+该提交从上游正文生成热路径移除旧版章节合同、scene streaming 和 scene budget runtime。当前本地已经采用折中策略：默认 writer 不把 sceneCards 或章节合同重新接入正文热路径，但 `ChapterExecutionContractService`、`chapterLengthControl`、规划到执行章节身份链接和旧版章节执行合同仍用于规划、审校、诊断、局部修复和兼容旧数据。直接删除这些文件会破坏本地章节执行区、卷规划同步和旧项目兼容；如后续要清理，只能作为章节运行时兼容层收敛阶段单独做。
 
 ### `bbd16008` / `e8fa256c` / `d2ef4d20` / `2a3c7e0b` Fact Ledger 全链路
 
@@ -121,7 +132,7 @@
 
 ### 桌面发布、README 状态和上游版本号提交
 
-`7298e7c8`、`bff7f000`、`6b2a7306`、`23ede003`、`69cedb0a`、`a22db04a`、`efa11eaf`、`dea07265`、`ce4d92b6`、`b0dd3ff7`、`d6725d27`、`4ba82892` 这类提交不应按上游直接同步。它们主要调整上游 README、release notes、上游桌面版本号和 GitHub Release workflow。当前本地桌面发布通道已经指向 `CDYYY98/AI-`，产品名是 `图灵网文工作台`，`desktop/package.json` 版本由本地正式发布节奏控制；同步上游 owner/repo、默认产品名或版本号会破坏本地客户端自动更新和品牌配置。后续只可按需吸收通用 workflow 技术点，例如 Node 24 或打包校验步骤，不能同步上游发布身份。
+`7298e7c8`、`bff7f000`、`6b2a7306`、`23ede003`、`69cedb0a`、`a22db04a`、`efa11eaf`、`dea07265`、`ce4d92b6`、`18d91fce`、`f7609721`、`e38d7bc7`、`6ed5e15a`、`b0dd3ff7`、`d6725d27`、`4ba82892` 这类提交不应按上游直接同步。它们主要调整上游 README、release notes、上游桌面版本号和 GitHub Release workflow。当前本地桌面发布通道已经指向 `CDYYY98/AI-`，产品名是 `图灵网文工作台`，`desktop/package.json` 版本由本地正式发布节奏控制；同步上游 owner/repo、默认产品名或版本号会破坏本地客户端自动更新和品牌配置。后续只可按需吸收通用 workflow 技术点，例如 Node 24 或打包校验步骤，不能同步上游发布身份。
 
 ### `a20db70e feat(dev-tools): 新增章节正文一键重置功能供测试重跑`
 
