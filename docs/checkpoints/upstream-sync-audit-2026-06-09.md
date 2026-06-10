@@ -200,6 +200,31 @@
 - `c1ca9f63`、`8abdfb0f` 已覆盖。本地工作区入口、AI 操作流、reasoning 开关、planner persistence、设置页运行配置和模型能力检测已整合；不直接同步上游 README/页面叙述，避免覆盖本地商业化个人中心和模型配置。
 - `6ceac93a` 部分覆盖。世界观删除入口和 toast 本地已有世界观工作区/素材库/一致性检查能力，但删除世界观属于数据删除操作，若要补齐必须按数据保护规则单独设计确认、备份和权限边界，不能作为普通同步直接加入。
 - `ef35c856`、`1f922a86`、`f8e76a17`、`99671c22` 属于上游 checkpoint、截图、TASK 路线图、README 文案或流程图资产提交，不直接同步。本地同步审计文档和 release notes/README 工作流是权威，避免把上游宣传素材或路线图混入本地商业分发文档。
+- `b30c1fde` 已覆盖。本地章节执行操作区已经由当前 `ChapterExecutionActionPanel`、章节执行共享文案和章节工作区布局承载，后续不能用上游小幅 label 调整覆盖本地章节执行面板。
+- `afde8e69` 已覆盖。本地书籍分析到写法/风格沉淀已经通过书籍分析工作区、写法公式页面和 Prompt Registry 的风格提示注册实现；上游的分析页跳转参数不再单独同步。
+- `22f64ddd` 已覆盖。本地已有 `NovelWorkspaceRail`、`novelWorkspaceNavigation` 和 `AppLayout` 的沉浸式小说工作区导航，且已经与本地桌面/商业页面入口共存。
+- `266efff7` 已覆盖。本地 `usageTracking`、任务中心 token 汇总、小说列表/自动导演进度面板和 `TaskTokenUsageSummary` 已经展示调用次数、输入/输出/总 tokens；继续同步时要保留本地账号类型模型路由和成本配置。
+- `a669a0e5` 已覆盖。本地 planner context blocks/helpers、自动导演 runtime/recovery、workflow reconciliation 和恢复归一化测试已经吸收该方向，且当前实现已进一步拆入 director runtime/step modules。
+- `bb4734c2` 已覆盖。本地 onboarding、资源推荐、故事模式、系统资源 bootstrap、写法公式和自动导演接管已有实现；上游 seed/README/页面叙述不直接迁入，避免覆盖本地商业化入口。
+- `35230c52` 已覆盖。本地卷规划共享类型、卷规划生成 schema、章节列表/大纲页和 volume planning 测试已经支持卷数建议、分析回看和规划校验。
+- `fa796c41` 已覆盖。本地角色阵容质量检查、角色准备上下文、自动导演恢复归一化和任务适配测试已经处理 recovery failure normalization 与 cast anchors。
+- `6970d2cb`、`6bf4710b` 已覆盖。本地 `client/.env.example`、`server/.env.example`、`client/src/lib/constants.ts`、`scripts/wait-for-port.cjs` 和常量测试已支持 LAN/dev host 默认值与恢复检查点；不再同步上游 README 文案。
+- `074ac7fa` 已覆盖。本地 `.nvmrc` 固定 `20.19.0`，`package.json` engines 支持 Node 20.19/22.12/24+ 与 pnpm 10.6+；Prisma 初始化已经由当前迁移/runtime migration 文档与脚本承担，不同步上游临时图片和 real-chain 测试。
+- `37ae03f5` 已覆盖。本地 `novelCoreReviewService`、章节 review context 测试和结构化失败诊断已经让上下文装配错误显式暴露，不再引入上游单点补丁。
+- `2c11146d` 已覆盖。本地首页、小说列表、任务中心和自动导演入口已经展示工作流状态与可继续操作；保留当前商业/桌面入口，不同步上游首页大改。
+- `dfb4a7c4`、`bfca17ed` 已覆盖。本地 pipeline runtime watchdog、任务恢复初始化、stuck/cancel 状态处理和相关 runtime/state/progress 测试已经存在。
+- `efd1aef9` 已覆盖。本地 RAG chunking、运行时设置、索引服务和分块测试已经约束 embedding token cap 与 chunk size/overlap。
+- `936f7bc1` 需单独设计。本地 genre/story mode 管理已有树形能力，但“删除父级资产节点”属于可能连带删除子节点和绑定关系的数据破坏操作；若要引入，必须先按数据保护规则设计确认、备份和恢复校验，不能作为普通同步直接加入。
+- `2e35113b` 已覆盖。本地 `client/src/api/knowledge.ts`、知识库页面和 `KnowledgeOpsTab` 已处理 RAG health 的缓存/内联展示。
+- `b6535fd0` 已覆盖。本地 director progress tracker、结构化调用诊断、prompt runner 元信息、runtime event projection 和 dashboard 诊断已经能定位慢步骤。
+- `685242a9` 已覆盖。本地知识库上传文本解码不再保留前端大小限制；后续如需限制应走服务端容量/费用策略，而不是恢复上游旧 UI 限制。
+- `83ac65a2` 已覆盖。本地自定义 OpenAI-compatible provider、模型路由、连通性检测、设置页和供应商余额查询已经更完整；同步时必须保护本地 DeepSeek/中转/账号类型模型配置。
+- `bbcbf9c4` 已覆盖。本地 `server/src/routes/llm.ts` 的模型路由 upsert schema 已允许 `maxTokens: null`，`modelRouter` 也会把空值当作未设置。
+- `1d315585` 已覆盖。本地小说列表 workflow summary、任务控制、token usage 和 `novelListWorkflowSummary.test.js` 已经支持流程状态与操作入口。
+- `999c0d76` 跳过。该提交是上游 README 与截图刷新，不能覆盖本地面向 `图灵网文工作台`、`CDYYY98/AI-`、卡密购买和桌面发布的文档/素材。
+- `7fd5121c` 已覆盖。本地角色准备 prompt schema、上下文块、性别/阵容质量检查、角色面板和相关 tests 已支持角色准备与性别流程。
+- `0fd85926` 已覆盖且部分延后。本地自动导演接管、候选执行、章节运行时、结构化大纲恢复、标题多样性、planner participant resolution 和 takeover validation 已经有更后续的整合；该上游大提交中的数据库迁移、截图和 TASK 重写不直接同步。
+- `b453922b` 已覆盖。本地 `ProviderBalanceService`、settings/admin 模型页面和供应商状态展示已经能显示 provider balance；保留本地商业定价与账号分层模型策略。
 
 ## 需要单独设计阶段的上游候选
 
