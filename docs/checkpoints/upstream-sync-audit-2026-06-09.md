@@ -63,7 +63,7 @@
 
 本地只同步了正文硬事实进入章节摘要的轻量桥接，并审查了 accepted facts 过滤规则。完整 Fact Ledger 会引入新的事实账本表、定稿写入路径、timeline finalization 移除点和跨章事实验收过滤，属于数据库与章节运行链主干迁移，不能在普通上游同步中直接 cherry-pick。进入该阶段前必须先设计迁移、备份验证、旧摘要/RAG 兼容和回滚策略。
 
-### `1fa357d3` / `b5d8c3b9` / `2ebfad2c` / `1f4ffd20` 等服务端模块化重构
+### `7c0c8f62` / `322dd76d` / `08b016df` / `e0775888` / `55c943eb` / `522a065b` / `4ec2f0e9` / `bcb70cf6` / `b47e0a6f` / `79f8e5c8` / `d63565f6` / `1f4ffd20` / `2ebfad2c` / `b5d8c3b9` / `1fa357d3` / `9112a308` / `a54b17c9` 等服务端模块化重构
 
 这些提交将 novel service、routes、director modules、chapter runtime 和 application service facade 大幅拆分。方向符合本地架构收敛目标，但会触碰大量稳定入口，也容易覆盖本地账号、商业化、桌面和部署适配。后续只能按一个子系统一个阶段迁移，并保留兼容 facade；不能为了追上上游目录结构而整体搬运。
 
@@ -96,13 +96,21 @@
 
 该提交主要是前端章节侧栏，但读取的数据来自 timeline、角色动态、资源风险等后端投影。当前本地已有部分 timeline shared 类型，但尚未接通 `getChapterTimeline` 客户端 API、查询 key 和章节页数据装配；直接复制侧栏会造成编译失败或空数据。可以作为后续体验优化候选，但应等待本地 timeline/资源投影边界稳定，或先设计本地适配数据源。
 
+### `72d16f84` / `9cbc1f42` / `4e2afe99` / `99d53074` / `ed0d2399` / `f5f8ff9f` / `6d6c1c86` 章节右侧栏连续调整
+
+这组提交围绕 future sidebar、章节参考面板右移、右栏 tabs、独立滚动区和列宽对齐展开，依赖上游 `ChapterExecutionInsightsSidebar`、`ChapterExecutionReferencePanel`、timeline 面板和未来动态数据源。当前本地章节工作区保留自己的章节执行面板与资产入口，且尚未完成 future/timeline 数据投影适配；直接同步会大幅改变章节页布局并可能造成空侧栏。后续应在 timeline/资源投影稳定后作为章节工作区 UX 阶段单独评估。
+
 ### `1450fe1b feat: harden character facts and chapter titles`
 
 该提交强化角色硬事实和章节标题，但包含 Prisma 字段、Prompt、章节上下文、角色准备和标题多样性策略。可以拆出 prompt/schema 或标题策略的小块继续审查；涉及 schema 的部分必须走迁移设计。
 
+### `9f5fb0cd feat(image): support custom image providers`
+
+该提交把自定义图片供应商接入设置页、图片路由和角色图像生成流程。功能有潜在商业价值，但会影响供应商配置、图片模型选择、成本暴露和前端设置页；本地当前重点是文本模型、卡密充值和桌面发布，图片供应商扩展应与封面生成和图片成本策略一起设计，不能只按上游设置页复制。
+
 ### 桌面发布、README 状态和上游版本号提交
 
-`dea07265`、`b0dd3ff7`、`d6725d27`、`4ba82892` 这类提交不应按上游直接同步。它们主要调整上游 README、上游桌面版本号和 GitHub Release workflow。当前本地桌面发布通道已经指向 `CDYYY98/AI-`，产品名是 `图灵网文工作台`，`desktop/package.json` 版本由本地正式发布节奏控制；同步上游 owner/repo、默认产品名或版本号会破坏本地客户端自动更新和品牌配置。后续只可按需吸收通用 workflow 技术点，例如 Node 24 或打包校验步骤，不能同步上游发布身份。
+`7298e7c8`、`bff7f000`、`6b2a7306`、`23ede003`、`69cedb0a`、`a22db04a`、`efa11eaf`、`dea07265`、`b0dd3ff7`、`d6725d27`、`4ba82892` 这类提交不应按上游直接同步。它们主要调整上游 README、release notes、上游桌面版本号和 GitHub Release workflow。当前本地桌面发布通道已经指向 `CDYYY98/AI-`，产品名是 `图灵网文工作台`，`desktop/package.json` 版本由本地正式发布节奏控制；同步上游 owner/repo、默认产品名或版本号会破坏本地客户端自动更新和品牌配置。后续只可按需吸收通用 workflow 技术点，例如 Node 24 或打包校验步骤，不能同步上游发布身份。
 
 ### `a20db70e feat(dev-tools): 新增章节正文一键重置功能供测试重跑`
 
