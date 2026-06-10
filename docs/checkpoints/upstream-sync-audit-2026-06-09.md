@@ -41,6 +41,7 @@
 - `c6a6bf11 feat(novel-gen): add quality guards for world pollution, milestone repeat, scene pattern, and volume pacing` 已同步低风险 Prompt/context 部分。本地新增 `completedMilestones`、`recentScenePatterns`、`keyMilestoneGuards` 共享类型字段，写章上下文会渲染已完成目标、场景模式黑名单和卷级关键节点守卫，writer prompt 也会禁止重复追求这些目标或复用场景模式；世界切片 prompt 增加不匹配专有名词污染防护。上游 `audit_chapter_continuity` 固定关键词扫描工具和 `rebuild_story_world_slice` agent 工具未直接同步，后续需按 AI-first 与本地世界观流程另行设计。
 - `f1d22fb6 feat(phase0): 质量债务根因归因埋点 + analyze_quality_debt_attribution 工具` 已按本地结构同步。章节 runtime 会在最终未通过时记录首次/二次失败 issue code、patch 锚点失配、计划错位、同义务重复失败和长度/内容漂移等归因，质量闭环会把归因写入 `chapter.riskFlags.qualityLoop.qualityDebtAttribution`，并新增只读 `analyze_quality_debt_attribution` 工具用于汇总 deferred quality debt。同步时未引入上游 `audit_chapter_continuity` 固定关键词扫描工具，工具选择仍保持由本地 AI planner 决定，确定性代码只聚合已记录事实。
 - `0d1e4d84 ci(desktop): 升级 release workflow actions 到 node24-native 版本` 已按本地桌面发布通道同步通用技术点。正式和 beta 桌面 release workflow 仅升级 `actions/checkout@v5`、`actions/setup-node@v5`、`actions/setup-python@v6`，保留本地 `CDYYY98/AI-` 发布仓库、`图灵网文工作台` 产品身份、Node 24 构建环境和现有发布脚本；未同步上游桌面版本号、README 状态或 release tag 身份。
+- `d2ef4d20 feat(fact-ledger): 桥接正文即兴事实到账本，修复跨章设定漂移` 已同步低风险摘要硬事实部分。章节摘要 Prompt 与 schema 会抽取 `concreteFacts`，本地 `NovelChapterSummaryService` 会把这些正文硬事实优先合入 `ChapterSummary.keyEvents`，让现有摘要、RAG 和后续上下文先获得连续性收益。未同步上游 `NovelFactService`、Fact Ledger 表结构和定稿热路径接入，避免未经迁移设计就改动数据库和章节运行链。
 
 ## 需要单独设计阶段的上游候选
 

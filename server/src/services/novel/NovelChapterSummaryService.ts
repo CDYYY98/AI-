@@ -4,11 +4,13 @@ import { ragServices } from "../rag";
 import type { RagOwnerType } from "../rag/types";
 import { runStructuredPrompt } from "../../prompting/core/promptRunner";
 import { chapterSummaryPrompt } from "../../prompting/prompts/novel/review.prompts";
+import type { ChapterConcreteFact } from "./chapterSummarySchemas";
 
 interface LLMGenerateOptions {
   provider?: LLMProvider;
   model?: string;
   temperature?: number;
+  contentOverride?: string;
 }
 
 type FactCategory = "plot" | "character" | "world";
@@ -50,6 +52,16 @@ function joinFacts(items: string[], max = 3): string {
   return Array.from(new Set(items)).slice(0, max).join("；");
 }
 
+function normalizeConcreteFacts(items: ChapterConcreteFact[] | undefined): ChapterConcreteFact[] {
+  return (items ?? [])
+    .map((item) => ({
+      text: item.text.replace(/\s+/g, " ").trim(),
+      category: item.category,
+    }))
+    .filter((item) => item.text.length > 0)
+    .slice(0, 12);
+}
+
 export class NovelChapterSummaryService {
   async generateChapterSummary(novelId: string, chapterId: string, options: LLMGenerateOptions = {}) {
     const chapter = await prisma.chapter.findFirst({
@@ -60,9 +72,10 @@ export class NovelChapterSummaryService {
       throw new Error("章节不存在。");
     }
 
-    const content = (chapter.content ?? "").trim();
+    const content = (options.contentOverride ?? chapter.content ?? "").trim();
     const existingExpectation = (chapter.expectation ?? "").trim();
     let summary = "";
+    let concreteFacts: ChapterConcreteFact[] = [];
 
     if (content) {
       try {
@@ -82,8 +95,10 @@ export class NovelChapterSummaryService {
         });
         const parsed = result.output;
         summary = normalizeSummary(parsed.summary ?? "");
+        concreteFacts = normalizeConcreteFacts(parsed.concreteFacts);
       } catch {
         summary = "";
+        concreteFacts = [];
       }
     }
 
@@ -98,7 +113,11 @@ export class NovelChapterSummaryService {
     }
 
     const facts = extractFacts(content || summary);
-    const keyEvents = joinFacts(facts.filter((item) => item.category === "plot").map((item) => item.content), 3);
+    const hardFactEvents = concreteFacts.map((item) => item.text);
+    const keyEvents = joinFacts([
+      ...hardFactEvents,
+      ...facts.filter((item) => item.category === "plot").map((item) => item.content),
+    ], 6);
     const characterStates = joinFacts(facts.filter((item) => item.category === "character").map((item) => item.content), 3);
 
     await prisma.$transaction(async (tx) => {
@@ -130,6 +149,7 @@ export class NovelChapterSummaryService {
       chapterId,
       summary,
       expectation: summary,
+      concreteFactCount: concreteFacts.length,
     };
   }
 
