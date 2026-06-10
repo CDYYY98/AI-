@@ -44,8 +44,32 @@
 - `d2ef4d20 feat(fact-ledger): 桥接正文即兴事实到账本，修复跨章设定漂移` 已同步低风险摘要硬事实部分。章节摘要 Prompt 与 schema 会抽取 `concreteFacts`，本地 `NovelChapterSummaryService` 会把这些正文硬事实优先合入 `ChapterSummary.keyEvents`，让现有摘要、RAG 和后续上下文先获得连续性收益。未同步上游 `NovelFactService`、Fact Ledger 表结构和定稿热路径接入，避免未经迁移设计就改动数据库和章节运行链。
 - `69adf8dd fix(director): pause character setup at review gate` 已覆盖。本地自动导演 runtime wiki 已明确 `character_setup_required` 是可恢复检查点，任务中心、小说工作区和自动导演进度面板均会显示“角色准备待审核”，服务端任务解释也会提示先审核角色阵容后继续；不会再因为正式角色数为 0 就把已有候选的角色准备阶段误判为失败。
 - `2a3c7e0b fix(fact-ledger): filter accepted facts by obligation coverage` 已审查 beta 候选。本地尚未同步完整 Fact Ledger 表与定稿服务，因此不直接移植上游 `factLedgerFilter`；但本地轻量摘要硬事实规则已经只从“正文已经写明”的内容抽取 `concreteFacts`，不会把写前计划、章节义务或伏笔指令直接记成已发生事实。完整验收覆盖过滤仍归入后续 Fact Ledger 迁移阶段。
+- `0e1af1b0 fix(director): bind quality debt to source chapter` 已覆盖。本地自动执行状态会保留 `qualityDebtChapterIds`、`qualityDebtChapterOrders` 和 `qualityDebtSummaries`，后续章节范围恢复时会按源章节绑定质量债务，不会把空白章节或非当前源章节误计入跳过质量债务。
+- `d400a9d5 feat(prompting): track runner quality telemetry` 已覆盖。本地 `promptQualityTelemetry` 会按 prompt id/version、任务类型、模型、stage 和 entrypoint 聚合完成率、失败类型、repair 次数、semantic retry 次数、空输出、输出长度、耗时和 token 使用；Prompt Registry wiki 和 `prompting.test.js` 已覆盖结构化、文本、流式与失败路径。
+- `6bc1e49a fix(director): ignore generating hint without draft` 与 `e93d4766 fix(director): derive chapter readiness from facts` 已覆盖。本地 `ChapterExecutionProgressInspector` 只把 `chapterStatus=generating` 视为 draft started，不会在没有正文时算作 draft saved；章节准备、审校、修复和状态提交均由事实矩阵推导，并有 `directorChapterExecutionProgress.test.js`、`directorTaskFactInspection.test.js` 和 `directorWorkflowStepModules.test.js` 覆盖。
+- `286d7c73 fix(novel): stabilize chapter closure and recovery polling` 已覆盖。本地 `ChapterRuntimeCoordinator` 在阻塞章节时不会长期停留在 generating，pipeline payload 与恢复轮询测试覆盖了章节关闭、状态回写和恢复提示。
+- `07a3e7a7 fix(director): honor disabled auto review facts` 已覆盖。本地执行事实检查会读取 auto execution plan 中的 `autoReview=false`，在自动审校关闭时把已生成正文视为审校跳过，而不是要求不存在的 audit facts。
+- `d8db4ab4 feat: allow skipping quality repair gate` 已覆盖。本地 continuation mode 支持 `skip_quality_repair`，小说页、任务中心和继续 runtime 会把该操作传入自动执行恢复，允许用户确认后跳过当前低风险质量修复门。
+- `17031585 fix(director): preserve chapter repair obligation context` 与 `545d67f7 fix(director): classify chapter obligation failures` 已覆盖。本地章节接收、写章和修复上下文会保留 obligation contract、coverage 和 blocking obligations，质量循环会区分 `draft_obligation_unmet`、`draft_repair_exhausted`、`replan_required` 等根因，并在投影里展示阻断义务。
+- `27817874 fix(director): route replan checkpoints to repair`、`1d108102 fix(director): continue quality-alerted chapter ranges`、`34ce9a87 fix(director): preserve chapter execution resume approval` 已覆盖。本地 `replan_required` 检查点会进入 `quality_repair` 恢复路径，低风险质量提示章节范围可以在用户/全书自动执行确认后继续，章节执行恢复会保留 `approveAutoExecutionScope`，避免已确认的执行范围再次卡在同一门控。
 
 ## 需要单独设计阶段的上游候选
+
+### `42e6f726` / `b5c53c62` 懒规划与多阶段质量修复闭环
+
+这组提交把章节任务单生成、分层缓存、N+1 预取、质量修复闭环和 JIT 规划深度绑定到上游较新的 pipeline 结构。当前本地已经吸收了“章节任务单可延后到执行前生成”的低风险校验修复，但未直接迁入完整懒规划架构。后续若要继续同步，应作为“章节生产链性能与 JIT 规划”单独阶段处理，先明确与本地自动导演、Prompt Registry、质量债务预算和桌面端内存约束的关系。
+
+### `bbd16008` / `e8fa256c` / `d2ef4d20` / `2a3c7e0b` Fact Ledger 全链路
+
+本地只同步了正文硬事实进入章节摘要的轻量桥接，并审查了 accepted facts 过滤规则。完整 Fact Ledger 会引入新的事实账本表、定稿写入路径、timeline finalization 移除点和跨章事实验收过滤，属于数据库与章节运行链主干迁移，不能在普通上游同步中直接 cherry-pick。进入该阶段前必须先设计迁移、备份验证、旧摘要/RAG 兼容和回滚策略。
+
+### `1fa357d3` / `b5d8c3b9` / `2ebfad2c` / `1f4ffd20` 等服务端模块化重构
+
+这些提交将 novel service、routes、director modules、chapter runtime 和 application service facade 大幅拆分。方向符合本地架构收敛目标，但会触碰大量稳定入口，也容易覆盖本地账号、商业化、桌面和部署适配。后续只能按一个子系统一个阶段迁移，并保留兼容 facade；不能为了追上上游目录结构而整体搬运。
+
+### `24900709` / `fc5d1ceb` 接管与卷规划章节联动
+
+这两个提交涉及已有项目接管体验、setup flow、卷规划章节与执行链连接。当前本地已经有自己的接管、dashboard view、章节执行恢复和质量修复路径，继续同步前需要先对照本地用户流程做产品级验收，避免引入上游页面状态后覆盖本地已有的模型、卡密、个人中心和桌面流程。
 
 ### `db0105ea feat(world): add book world generation workflow`
 
