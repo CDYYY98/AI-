@@ -137,6 +137,23 @@
 - `0ff54f00 Require commits after each development phase` 已由本地 `AGENTS.md` 分支与阶段提交规则覆盖。本项目要求每个阶段完成后提交，并在提交前按 release-note 工作流判断是否更新 README / release notes。
 - `409821ad`、`89e6823b`、`7a25f4b1` 属于上游 release notes、P0 状态文档或桌面版本号记录，不直接同步；本地以 `docs/checkpoints/upstream-sync-audit-2026-06-09.md` 和自己的桌面版本节奏作为权威。
 - `38d7024a`、`4de4d39a`、`67e079b7`、`85990541`、`7f08a873` 属于上游桌面版本号、beta release 摘要或 README 截图/状态补充，不直接同步。当前本地 release note、README 最新更新、桌面版本和展示素材必须由本地产品节奏维护。
+- `6acddede` 属于上游桌面版本号提交，不直接同步。本地桌面公开发布必须继续由 `desktop/package.json` 的本地稳定版本和 `vX.Y.Z` tag 规则驱动，不能引入上游 `0.2.7` 节奏，否则会破坏 `CDYYY98/AI-` release 与客户端更新通道。
+- `f5392685`、`3c357206` 已覆盖并按本地正式客户端策略收敛。本地已有 `desktop/src/runtime/updater.ts`、`desktop/src/main.ts` 和 `DesktopBootstrapShell` 的启动更新检查、下载/安装状态展示；`desktop/src/runtime/server.ts` 保留 `AI_NOVEL_APP_DATA_DIR` 和 `DESKTOP_SQLITE_DATABASE_URL`，正式打包可通过 `AI_NOVEL_API_BASE_URL` 连接线上服务端，避免打包版误用或覆盖本地 sqlite 数据。
+- `dac26ffc` 已覆盖。本地 `client/src/lib/constants.ts` 在生产 Web 未显式配置 API 时使用同源 `/api`，开发环境保留 `localhost:3000/api` 推断，桌面环境仍优先读取部署配置；`client/src/lib/constants.test.mjs` 覆盖该行为。
+- `1137d671`、`b0f74105` 已覆盖并必须保护本地商业化模型选择。本地已有 Anthropic/openai-compatible 协议字段、结构化响应格式、reasoning 开关、请求 guard、结构化修复协议透传、模型路由连通性测试和设置页 `ModelRouteFields`；同时保留本地 `AccountTierModelSettingsService` 和后台体验账户/创作账户模型配置，不能用上游设置页改动覆盖商业化路由。
+- `c10c99d5` 已按本地能力覆盖主要风险点。本地有 `server/src/llm/requestLimiter.ts` 和 `server/tests/llmRequestLimiter.test.js` 的 provider 请求限流，`volumeWorkspacePersistence` 与 `plannerPersistence` 已有事务锁/写入稳定性测试；上游拆分 `settingsProviderRoutes` 的目录结构不直接搬运，避免冲突本地设置页、API key、账号类型模型和正式邮箱/部署配置。
+- `8a151e6b`、`173029f1` 已覆盖。本地知识库已有 RAG embedding 设置、运行时检索参数、collection 模式、自动重建、RAG 兼容启动、任务清理服务和前端 `KnowledgeEmbeddingSettingsCard`；`RagJobCleanupService` 与 `ragJobListing.test.js` 覆盖任务列表清理，后续只需按本地 UI 继续迭代，不直接同步上游设置页重排。
+- `78f54680`、`eb9d86bd`、`ef4040f4`、`d2974289`、`f4e1c145` 已覆盖。本地接管/结构化大纲恢复会同步全书详情、重置结构化接管后的下游阶段、执行前重验大纲范围、强制章节执行顺序，并隔离章节执行状态；`novelDirectorTakeoverExecution.test.js`、`novelDirectorTakeoverReset.test.js`、`novelDirectorRetry.test.js` 和下游 reset 的前端 rail 测试提供覆盖。
+- `c56339d0`、`3080ce6a` 已覆盖。本地 `NovelWorkflowService` 在任务状态转移时调用 `AutoDirectorFollowUpNotificationService`，钉钉/企微通道、回调执行、通知日志、自动审批审计和最近记录投影均有服务与路由测试；继续同步时不能退回到只在页面内提示的弱通知。
+- `0f0514e2` 已由本地章节自动化释放与运行态收敛覆盖。章节 artifact sync、runtime pipeline、LLMSelector、自动审批草稿和章节 runtime 测试已支持自动导演释放后的继续执行；同步时应保留本地模型选择、账户类型模型和桌面正式服务配置。
+- `a681aca8`、`81ea64d1`、`0dff24af`、`661c422e`、`bef46379` 已覆盖。本地已经有移动端小说工作区、自动导演状态卡、跟进中心紧凑筛选、任务筛选、状态网格和移动端导航契约测试，适合保留本地现有移动 UI，而不是按上游整页替换。
+- `1f93cd55`、`1e80c873`、`af3da81f`、`a4f1d764`、`5938e820`、`a0112d47` 已覆盖或等价处理。本地 `Dockerfile.api`/`Dockerfile.web` 已保留 workspace runtime、`server/prisma.config.ts`、server/shared 模块、Postgres 生产模式、web nginx 配置和瘦构建上下文；API 镜像只对 storage 与 prisma shim 做权限处理，避免对整个 `/app` 递归 chown。
+- `73347231`、`3fbdc3a6`、`483877e4`、`eeb030d8` 已覆盖并已本地化迁移。本地已有角色库同步、角色资源账本、Prompt Registry 注册、Postgres 兼容的 `20260424223000_character_resource_ledger` 迁移、章节上下文与状态提交中的角色资源联动，以及相关测试；后续不要重新引入上游旧版迁移 SQL。
+- `4fa70a7c`、`ef5fb7ee` 已覆盖。本地已有卷大纲 chunking、beat sheet chapter budget、结构化大纲恢复、移动端站点 shell、接管 reset range、工作区 rail downstream reset 和高内存范围保护；继续同步时应以本地自动导演恢复链和移动契约测试为准。
+- `ec58838b`、`cfa8c224`、`f439693d`、`2e035237`、`aabbc2e9` 已覆盖。本地有 closeout safeguard、高内存 reservation、重叠 continue run 替换、rewrite snapshot 保护、自动导演跟进批量操作、审批策略和安全修复动作投影；这些能力已经和本地任务中心/跟进中心/商业化模型路由整合，不应按上游重新覆盖。
+- `44ca0ed9` 仅涉及上游 style extraction status enum 迁移和 release note，当前本地已有 style extraction 状态链和设置页运行时卡片；如后续发现数据库枚举不一致，应单独按本地迁移历史审查，不能把上游迁移直接套进生产库。
+- `521d8420`、`dc722eff`、`34e14289`、`7c765f85` 属于上游 CLA 与许可证策略调整，不直接同步。当前本项目包含本地商业化、桌面发布、卡密/充值与私有部署约束，许可证和贡献协议需要用户明确法律/商业决策后再改，不能在技术同步阶段自动替换。
+- `a48a4a9f`、`05c978ea` 的 beta 预发布分支说明已由本地 `AGENTS.md` 的 `beta` 工作流覆盖。本地规则更完整，包含 feature branch、beta 集成、main 发布、桌面发布和 hotfix 回灌，不需要把上游 README 片段复制到用户 README。
 
 ## 需要单独设计阶段的上游候选
 
