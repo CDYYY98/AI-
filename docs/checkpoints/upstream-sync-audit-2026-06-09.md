@@ -259,6 +259,28 @@
 - `c9671594` 已覆盖。本地流派管理、标题工坊、story macro、世界观生成、LLM debug logging 和相关 shared types 已经支持流派/标题/规划流程。
 - `1639fdc0` 已覆盖。本地小说阶段 tabs、基础信息拆分、章节运行时、路由拆分、SSE phase 和 planner normalization 已有后续实现。
 - `bc34468a` 已覆盖且不直接同步。本地模型路由、world consistency/visualization、规划服务、状态服务和相关 tests 已经存在；README/TASK 历史叙述不覆盖本地文档。
+- `57e13e2a`、`e53f42da` 已覆盖。本地 Creative Hub、novel setup ideation/guidance composer、setup status、turn summary、工具调用摘要和 runtime tests 已有后续实现；继续保护自动导演主流程不被 Creative Hub 泛聊天化。
+- `9b1d3c23` 已覆盖。本地 `LLMSelector`、`llmStore`、Creative Hub route payload、模型路由和账号类型模型覆盖已经能保留自定义模型选择。
+- `fb39b485` 已覆盖但跳过迁移/备份副作用。本地小说生产 workflow、novel production status、工具拆分和任务中心已有后续实现；上游提交中的旧迁移重建、临时 db backup 和 restore-dev-data 脚本不进入本地同步。
+- `9434c865` 已覆盖。本地 LangGraph/Creative Hub runtime、interrupt graph、tool payloads、agent run routes、approval continuation、run locks 和 shared creative hub types 已存在。
+- `003b96f0`、`8c67aef5`、`5b308c1f`、`d3295948` 属于早期 TASK/agent roadmap/双中枢设计与初版 agent tool runtime，已被当前 agent runtime、Creative Hub、Prompt Registry、任务中心和自动导演设计覆盖；TASK 历史不直接同步。
+- `42ad229d` 已覆盖。本地 agent run、task adapters、streaming、NovelCoreService 拆分、chapterWritingGraph、modelRouter、任务中心和 SSE 处理已存在；上游临时 scripts 和旧迁移不进入本地。
+- `b9f7fe19` 已覆盖。本地 `NovelChapterSummaryService`、章节摘要路由、章节运行时总结和 review prompt 已有后续实现。
+- `ef1e34d2` 已覆盖。本地小说编辑器已经拆出基础信息、章节管理、角色面板、Pipeline、结构化大纲、版本/同步工具和工作区导航；不回退到上游早期 redesign。
+- `5df1b6ba` 已覆盖且跳过临时污染。本地结构化输出、任务中心、RAG worker、图片生成、结构化大纲、book analysis 和 shared task types 已经进一步实现；上游 `.cursor`、`__codex_*` 和异常根文件不进入本地。
+- `e3cff238` 已覆盖。本地小说导出服务、导出路由和任务/桌面下载流程已有实现。
+- `8ee6a563` 跳过。该提交是上游 README AI-first 愿景重写，本地已有自己的 README、release notes、产品定位和商业化说明。
+- `7c02d038`、`36968525` 已覆盖。本地角色库编辑、角色创建/图片/编辑弹窗、小说角色面板、补充角色、角色重写/续写/草稿优化和角色相关 routes 已有后续版本。
+- `56a7c88d`、`cfc954d1` 同属上游临时/备份文件清理类提交，本地当前工作树不依赖这些文件；不需要同步。
+- `cb3e881b` 已覆盖但不直接同步。该提交是早期“保存当前工作区”大杂烩，包含 book analysis、图片、RAG、角色、知识库和腐坏备份文件；本地对应功能均有后续模块化实现，备份文件不进入同步。
+- `5be36fac` 已覆盖。本地章节大纲同步、NovelReferenceService 后续能力、卷规划到章节执行合同和结构化大纲恢复已存在。
+- `955e66ce`、`430c66b7` 已覆盖。本地角色生成引用、书籍分析工作区拆分、BookAnalysisDetailPanel/Sidebar、角色引用生成和相关路由已有后续实现。
+- `0b289953` 已覆盖。本地书籍分析 novel picker、document id 清理、发布绑定和工作区状态管理已有后续实现。
+- `4e4d7c54` 不直接同步。上游修的是早期 Prisma 迁移链；本地迁移历史、runtime migrations、SQLite/Postgres 兼容和数据保护规则已经独立维护，不能用上游旧迁移覆盖。
+- `44aed8be`、`2350be7a` 已覆盖。本地书籍分析发布到知识库/小说绑定、KnowledgeService、KnowledgeBindingPanel、知识库文档选择、RAG indexing 和 book analysis shared types 已有后续实现。
+- `f4ffa23b`、`28af6f31` 已覆盖。本地 RAG/Qdrant/embedding 设置、环境变量、设置页、RagRuntimeSettingsService 和部署说明已有当前版本；上游 README 指令不覆盖本地部署文档。
+- `f49725ab` 已覆盖。本地世界观工作区、异步向量检索、RAG 服务、世界结构/可视化、world routes 和 shared world types 已有后续实现。
+- `30611c4c` 已覆盖为项目初始基线。本地已经在该初始版本之上发展出认证、商业化、桌面发布、自动导演、卡密、Prompt Registry、RAG 和任务中心；不能用初始提交重放或覆盖当前文件。
 
 ## 需要单独设计阶段的上游候选
 
