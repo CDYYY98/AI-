@@ -52,6 +52,10 @@
 - `d8db4ab4 feat: allow skipping quality repair gate` 已覆盖。本地 continuation mode 支持 `skip_quality_repair`，小说页、任务中心和继续 runtime 会把该操作传入自动执行恢复，允许用户确认后跳过当前低风险质量修复门。
 - `17031585 fix(director): preserve chapter repair obligation context` 与 `545d67f7 fix(director): classify chapter obligation failures` 已覆盖。本地章节接收、写章和修复上下文会保留 obligation contract、coverage 和 blocking obligations，质量循环会区分 `draft_obligation_unmet`、`draft_repair_exhausted`、`replan_required` 等根因，并在投影里展示阻断义务。
 - `27817874 fix(director): route replan checkpoints to repair`、`1d108102 fix(director): continue quality-alerted chapter ranges`、`34ce9a87 fix(director): preserve chapter execution resume approval` 已覆盖。本地 `replan_required` 检查点会进入 `quality_repair` 恢复路径，低风险质量提示章节范围可以在用户/全书自动执行确认后继续，章节执行恢复会保留 `approveAutoExecutionScope`，避免已确认的执行范围再次卡在同一门控。
+- `fe36eaa7 fix(novel): normalize chapter structured outputs` 已覆盖并扩展。本地章节接收 schema 已归一化 `blockingIssues.category`、`repairDirectives.mode/target` 和 `missingObligations` 常见别名，章节资产 delta schema 已归一化角色资源类型/状态/用途、payoff 状态/风险信号、关系动态和候选角色字段；Prompt 文案也约束模型只输出合同字段。
+- `56d099d4 Stop treating urgent payoff as replan failure` 已覆盖。本地 `ReplanSignal` 不包含 `urgent_payoff`，`advance_payoff`、`urgentPayoffs` 和 `urgentCount` 只作为生成职责信号；只有逾期 payoff、显式 `nextAction=replan`、阻塞审计或人工请求才会触发重规划。
+- `ddbb22ee fix(novel): recover from invalid chapter patch repairs` 已覆盖并增强。本地 `ChapterPatchRepairService` 会把结构化 prompt 校验失败和 patch apply 异常转换成 `ChapterPatchRepairFailedError`，`replacement` 允许为空以删除唯一片段，章节生产链 wiki 已明确无效局部补丁应升级为可恢复失败而不是原始 Zod 错误。
+- `1616a0c7 fix(director): stabilize retry recovery and task targeting` 已按本地结构覆盖主要目标。本地已有 `novelWorkflowAutoDirectorReconciliation`、自动执行 pipeline 状态同步、retry 后强制自动导演恢复测试、前端以具体 director task 作为继续/重试/质量修复 action target，以及独立的 auto-director follow-up 查询 key/API；未同步其中的上游桌面版本号和页面命名整理。
 
 ## 需要单独设计阶段的上游候选
 
