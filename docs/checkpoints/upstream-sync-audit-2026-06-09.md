@@ -185,6 +185,21 @@
 - `f67fb535` 已覆盖。本地已有角色图像提示词优化 PromptAsset、图片 prompt shared 类型、图片路由和角色图片弹窗优化；后续图片能力扩展仍应和图片成本、供应商和封面工作流一起评估。
 - `e333e3e5` 已覆盖。本地 RAG runtime settings、embedding settings、图片 provider settings、运行时兼容 bootstrap 和设置页导航卡已经把运行配置收拢到应用设置；保留本地正式邮箱、模型路由、账户类型模型和卡密运营入口。
 - `1f27e43e` 属于上游删除误跟踪文本样本/临时产物的提交，本地当前没有跟踪这些样本文本或 `.tmp` 产物，不需要同步。
+- `a3b0813e`、`65830885`、`7f680870` 已覆盖。本地自动导演接管、pipeline recovery、章节标题修复、candidate seed 修复、结构化规划、LLM repair/session logging 和任务恢复归一化均已存在；继续同步应保留本地 worker/runtime/follow-up 架构，而不是回到上游旧 `NovelDirectorService` 聚合实现。
+- `0fff27c3`、`396ed67b` 已覆盖。本地章节编辑器 V2 已拆出 `ChapterEditorShell`、诊断卡、选区 AI 浮动工具、diff 面板、改写候选 PromptAsset、章节编辑路由和测试；不需要用上游较早的页面拆分覆盖当前编辑器。
+- `95f38c35`、`cea19b85`、`3d95b179` 已覆盖。本地已有 payoff ledger、章节 payoffs directive、volume payoff overview、chapter length control、scene budget runtime 的兼容能力、章节运行时面板和 payoff 同步测试；完整 Fact Ledger / timeline 仍按单独阶段评估，不能把上游旧 scene execution 热路径整体搬回。
+- `e0a20ae8` 已覆盖。本地角色生成稳定性已通过角色准备 PromptAsset、generated content schema、角色诊断、角色阵容质量闸、自动导演角色 gate 测试和角色资源账本收敛；后续仍按 AI-first Prompt/schema 修复，不加固定关键词兜底。
+- `7af0dbb2` 已覆盖。本地模型路由、Kimi/DeepSeek reasoning 处理、结构化输出能力检测和 `novelDirectorSchemas.test.js` 已覆盖 Kimi 自动导演规划兼容；同时保留本地后台模型定价和账户类型模型选择。
+- `ce36c151`、`19997084` 已覆盖。本地 director candidate 的 `titleOptions` schema、candidate batch hydration、confirmation dedupe、候选选择路由和任务 UI 已有测试；继续同步时不能破坏本地自动导演候选弹窗与任务中心入口。
+- `209ad819`、`3cf5d8c8` 已覆盖。本地 pipeline payload 可携带质量 notice，任务中心会展示自动导演重规划/质量提醒，`pipelineJobDedup`、任务可见性和 linked pipeline job 去重测试避免重复任务污染列表。
+- `6d14167a` 已被后续结构化输出修复覆盖。本地已有 structured output diagnostics、fallback transport、repair parser、provider capability 和 Prompt Registry 结构化修复测试；上游 TASK 计划条目不再单独同步。
+- `b64dcf81`、`65339262`、`682ac06a`、`1fc9c867` 已覆盖。本地自动导演恢复提示、reused pipeline job resume、任务导出可见性、失败 explainability、恢复归一化和 task visibility 测试已存在；继续同步时要保护本地任务归档、卡密和桌面上下文。
+- `08e64794` 已覆盖。本地结构化输出 fallback 设置、模型连通性诊断、book analysis 稳定性、payoff chapter refs、`maxTokens` 空值兼容和模型路由 UI 已有实现；同步时保留本地商业供应商设置和余额查询。
+- `93cdbe3b` 已覆盖。本地自动导演支持全书、章节范围和当前批次等 scoped auto execution，`directorAutoExecutionPlan.shared.ts`、auto execution runtime、导出服务和相关测试已经整合该能力。
+- `ad360167` 已覆盖。本地 SSE `RunStatus` 支持 `streaming/finalizing/completed` phase，章节运行时在流式正文结束后的审核/保存阶段会显示 finalizing 状态，`chapter-runtime-routes.test.js` 覆盖该行为。
+- `c1ca9f63`、`8abdfb0f` 已覆盖。本地工作区入口、AI 操作流、reasoning 开关、planner persistence、设置页运行配置和模型能力检测已整合；不直接同步上游 README/页面叙述，避免覆盖本地商业化个人中心和模型配置。
+- `6ceac93a` 部分覆盖。世界观删除入口和 toast 本地已有世界观工作区/素材库/一致性检查能力，但删除世界观属于数据删除操作，若要补齐必须按数据保护规则单独设计确认、备份和权限边界，不能作为普通同步直接加入。
+- `ef35c856`、`1f922a86`、`f8e76a17`、`99671c22` 属于上游 checkpoint、截图、TASK 路线图、README 文案或流程图资产提交，不直接同步。本地同步审计文档和 release notes/README 工作流是权威，避免把上游宣传素材或路线图混入本地商业分发文档。
 
 ## 需要单独设计阶段的上游候选
 
