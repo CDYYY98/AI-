@@ -225,6 +225,18 @@
 - `7fd5121c` 已覆盖。本地角色准备 prompt schema、上下文块、性别/阵容质量检查、角色面板和相关 tests 已支持角色准备与性别流程。
 - `0fd85926` 已覆盖且部分延后。本地自动导演接管、候选执行、章节运行时、结构化大纲恢复、标题多样性、planner participant resolution 和 takeover validation 已经有更后续的整合；该上游大提交中的数据库迁移、截图和 TASK 重写不直接同步。
 - `b453922b` 已覆盖。本地 `ProviderBalanceService`、settings/admin 模型页面和供应商状态展示已经能显示 provider balance；保留本地商业定价与账号分层模型策略。
+- `06de9ffe` 跳过。上游为 MIT license 元数据提交；本地当前根 `LICENSE` 与 package license 为 AGPL-3.0-only，不能在同步过程中静默改写授权口径。
+- `55f1e280` 已覆盖。本地 `NovelTaskDrawer`、任务详情 steps、Prompt Registry runner、structured output hint、自动导演进度和任务适配器已经支持更稳定的任务控制与规划状态展示。
+- `40203632` 已覆盖。本地自动导演恢复流已经进一步拆到 command/worker/runtime/projection/follow-up action 体系，任务中心和工作区均有恢复候选、重试和继续入口。
+- `58ea03c1` 已覆盖。本地 LLM capabilities、provider schema、模型路由、连通性检测和 provider tests 已覆盖供应商能力判断；该上游提交标题异常，不单独同步。
+- `2a46bcfe` 已覆盖。本地已经统一 novel workflow task、自动导演、章节执行、结构化大纲和任务中心适配，并保留本地商业化/桌面上下文。
+- `09202c4a` 已覆盖。本地标题生成 schema、卷规划校验、章节执行面板、流派/故事模式和世界观生成入口已经有后续实现；不回退到上游较早 UI。
+- `fe15892b`、`a6b18866`、`720a6d6b`、`ad2c6194`、`4e98851a` 属于 README/首页/文档表述调整，不直接同步。README 更新继续走本地 release notes 工作流。
+- `486d72b5`、`17b96211` 属于上游流程图 SVG/README 资产提交，不同步到本地商业发行文档。
+- `f355777b`、`4284dc2b`、`4b05ce7c` 已覆盖。本地卷规划工作台、结构化大纲、章节执行操作区、chapter layered context、volume workspace document/persistence 和 volume generation orchestrator 已经整合且有更后续的恢复/执行链适配。
+- `c06cfcc6` 已覆盖。本地已有 Prompt Registry / Workflow Registry wiki、治理测试和 README release notes 工作流；不把上游 README 单行文案覆盖到本地首页。
+- `1c44e174` 已覆盖。本地 `novelStructuredOutlineRepairPrompt`、结构化大纲恢复 cursor、structured outline step modules、自动导演 structured outline backfill 和相关 validation tests 已经覆盖结构化大纲修复。
+- `b59441d5`、`ab7b0718`、`61135669` 已覆盖。本地 `server/src/prompting/` 已作为产品级 Prompt 唯一入口，`PromptAsset`、`promptRunner`、workflow registry、tool schema 拆分、prompt governance tests 和 Prompt Registry wiki 均已存在；后续新增 Prompt 仍按本地治理规则迁入，不 cherry-pick 上游早期重构。
 
 ## 需要单独设计阶段的上游候选
 
