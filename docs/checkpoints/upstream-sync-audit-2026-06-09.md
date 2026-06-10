@@ -42,6 +42,8 @@
 - `f1d22fb6 feat(phase0): 质量债务根因归因埋点 + analyze_quality_debt_attribution 工具` 已按本地结构同步。章节 runtime 会在最终未通过时记录首次/二次失败 issue code、patch 锚点失配、计划错位、同义务重复失败和长度/内容漂移等归因，质量闭环会把归因写入 `chapter.riskFlags.qualityLoop.qualityDebtAttribution`，并新增只读 `analyze_quality_debt_attribution` 工具用于汇总 deferred quality debt。同步时未引入上游 `audit_chapter_continuity` 固定关键词扫描工具，工具选择仍保持由本地 AI planner 决定，确定性代码只聚合已记录事实。
 - `0d1e4d84 ci(desktop): 升级 release workflow actions 到 node24-native 版本` 已按本地桌面发布通道同步通用技术点。正式和 beta 桌面 release workflow 仅升级 `actions/checkout@v5`、`actions/setup-node@v5`、`actions/setup-python@v6`，保留本地 `CDYYY98/AI-` 发布仓库、`图灵网文工作台` 产品身份、Node 24 构建环境和现有发布脚本；未同步上游桌面版本号、README 状态或 release tag 身份。
 - `d2ef4d20 feat(fact-ledger): 桥接正文即兴事实到账本，修复跨章设定漂移` 已同步低风险摘要硬事实部分。章节摘要 Prompt 与 schema 会抽取 `concreteFacts`，本地 `NovelChapterSummaryService` 会把这些正文硬事实优先合入 `ChapterSummary.keyEvents`，让现有摘要、RAG 和后续上下文先获得连续性收益。未同步上游 `NovelFactService`、Fact Ledger 表结构和定稿热路径接入，避免未经迁移设计就改动数据库和章节运行链。
+- `69adf8dd fix(director): pause character setup at review gate` 已覆盖。本地自动导演 runtime wiki 已明确 `character_setup_required` 是可恢复检查点，任务中心、小说工作区和自动导演进度面板均会显示“角色准备待审核”，服务端任务解释也会提示先审核角色阵容后继续；不会再因为正式角色数为 0 就把已有候选的角色准备阶段误判为失败。
+- `2a3c7e0b fix(fact-ledger): filter accepted facts by obligation coverage` 已审查 beta 候选。本地尚未同步完整 Fact Ledger 表与定稿服务，因此不直接移植上游 `factLedgerFilter`；但本地轻量摘要硬事实规则已经只从“正文已经写明”的内容抽取 `concreteFacts`，不会把写前计划、章节义务或伏笔指令直接记成已发生事实。完整验收覆盖过滤仍归入后续 Fact Ledger 迁移阶段。
 
 ## 需要单独设计阶段的上游候选
 
@@ -62,6 +64,10 @@
 
 这些提交引入 timeline constraint layer、timeline repository、timeline finalization、repair runtime 拆分和大量章节运行时状态调整。它们依赖上游较新的 `server/src/modules/timeline` 和运行时拆分结构，本地当前仍保留较多 monolithic runtime。同步前应先做章节运行时架构迁移计划，不能把 migrations 和 runtime split 夹在普通 bug fix 中。
 
+### `bfdd7779 fix(timeline): normalize extracted state values`
+
+该提交依赖上游 timeline prompt、timeline shared schema 和 timeline constraint 测试。当前本地没有采用上游 timeline 写章介入路径，且已有 Prompt Registry 的结构化输出修复与别名归一化机制；直接同步 timeline state normalization 会把未启用的 timeline 模块带入主链路。后续若启动 timeline/Fact Ledger 融合迁移，应和 timeline constraint layer 一起评估。
+
 ### `addd80cd feat(chapter): add future dynamics sidebar`
 
 该提交主要是前端章节侧栏，但读取的数据来自 timeline、角色动态、资源风险等后端投影。当前本地已有部分 timeline shared 类型，但尚未接通 `getChapterTimeline` 客户端 API、查询 key 和章节页数据装配；直接复制侧栏会造成编译失败或空数据。可以作为后续体验优化候选，但应等待本地 timeline/资源投影边界稳定，或先设计本地适配数据源。
@@ -73,6 +79,10 @@
 ### 桌面发布、README 状态和上游版本号提交
 
 `dea07265`、`b0dd3ff7`、`d6725d27`、`4ba82892` 这类提交不应按上游直接同步。它们主要调整上游 README、上游桌面版本号和 GitHub Release workflow。当前本地桌面发布通道已经指向 `CDYYY98/AI-`，产品名是 `图灵网文工作台`，`desktop/package.json` 版本由本地正式发布节奏控制；同步上游 owner/repo、默认产品名或版本号会破坏本地客户端自动更新和品牌配置。后续只可按需吸收通用 workflow 技术点，例如 Node 24 或打包校验步骤，不能同步上游发布身份。
+
+### `a20db70e feat(dev-tools): 新增章节正文一键重置功能供测试重跑`
+
+该提交提供章节正文重置入口，属于明显的破坏性测试工具。按本地数据保护规则，任何删除正文、重置章节内容、清理生成结果的能力都必须先有明确备份、恢复验证、权限隔离和用户显式批准；不能在面向用户的小说工作区默认加入“一键重置正文”。如后续确实需要，应单独做管理员开发工具，并强制备份校验后才能执行。
 
 ## 当前结论
 
