@@ -94,7 +94,7 @@ export function getMobilePrimaryNavItems(): MobileNavItem[] {
   return primaryNavItems;
 }
 
-export function getMobileMoreNavGroups(options: { isAdmin?: boolean } = {}): MobileNavGroup[] {
+export function getMobileMoreNavGroups(options: { isAdmin?: boolean } = { isAdmin: true }): MobileNavGroup[] {
   return moreNavGroups
     .map((group) => ({
       ...group,

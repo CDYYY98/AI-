@@ -46,9 +46,11 @@ export default function SettingsNavigationCards() {
               {ragProvider?.isActive ? "启用中" : "未启用"}
             </Badge>
           </div>
-          <Button asChild className={AUTO_DIRECTOR_MOBILE_CLASSES.fullWidthAction}>
-            <Link to="/knowledge?tab=settings">打开知识库设置</Link>
-          </Button>
+          <div className={AUTO_DIRECTOR_MOBILE_CLASSES.settingsEntryActionRow}>
+            <Button asChild className={AUTO_DIRECTOR_MOBILE_CLASSES.fullWidthAction}>
+              <Link to="/knowledge?tab=settings">打开知识库设置</Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

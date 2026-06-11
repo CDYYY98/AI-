@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/components/layout/AuthContext";
 import DesktopBrandMark from "@/components/layout/DesktopBrandMark";
+import LLMSelector from "@/components/common/LLMSelector";
 import { Button } from "@/components/ui/button";
 import {
   AUTO_DIRECTOR_MOBILE_CLASSES,
@@ -77,6 +78,12 @@ export default function Navbar(props: NavbarProps) {
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <LLMSelector
+          compact
+          showBadge={false}
+          showHelperText={false}
+          className={useMobileAutoDirectorShell ? AUTO_DIRECTOR_MOBILE_CLASSES.navbarModelSelector : "hidden sm:block"}
+        />
         {!isHome && showWorkspaceToggle ? (
           <Button
             type="button"
